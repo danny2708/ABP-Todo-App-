@@ -1,0 +1,40 @@
+{
+  "culture": "vi",
+  "texts": {
+    "Menu:Home": "Trang chủ",
+    "Welcome": "Xin chào",
+    "Menu:TaskManagement": "Quản lý công việc",
+    "Menu:Tasks": "Danh sách công việc",
+
+    "Permission:TaskManagement": "Quản lý công việc",
+    "Permission:Tasks": "Quản lý công việc",
+    "Permission:Tasks.Create": "Tạo mới công việc",
+    "Permission:Tasks.Update": "Cập nhật công việc",
+    "Permission:Tasks.Delete": "Xóa công việc",
+    "Clear": "Mặc định",
+
+    "Task": "Công việc",
+    "Status": "Trạng thái",
+    "AssignedTo": "Người thực hiện",
+    "Description": "Mô tả",
+    "CreationTime": "Ngày tạo",
+    "Title": "Tiêu đề",
+    "AssignedUser": "Người được chỉ định",
+    "FilterByStatus": "Lọc theo trạng thái",
+    "FilterByUser": "Lọc theo người được chỉ định",
+    "NewTask": "Công việc mới",
+    "TaskTitlePlaceholder": "Tiêu đề",
+    "DescriptionPlaceholder": "Mô tả",
+    "SelectUser": "Chọn người nhận việc",
+    "Create": "Tạo",
+    "Update": "Cập nhật",
+    "AreYouSureToDelete": "Bạn có chắc là muốn xóa không?",
+
+    "Enum:TaskStatus.0": "Mới tạo",
+    "Enum:TaskStatus.1": "Đang làm",
+    "Enum:TaskStatus.2": "Hoàn thành",
+    "Enum:TaskStatus:New": "Mới",
+    "Enum:TaskStatus:InProgress": "Đang xử lý",
+    "Enum:TaskStatus:Completed": "Hoàn thành"
+  }
+}

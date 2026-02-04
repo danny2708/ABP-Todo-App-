@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "TaskManagement.Blazor.WebApp.Client": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:59221;http://localhost:59222"
+    }
+  }
+}
