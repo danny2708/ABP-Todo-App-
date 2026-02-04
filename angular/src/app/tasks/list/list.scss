@@ -1,0 +1,115 @@
+/* list.scss - Styles for Tasks list view */
+
+/* Card adjustments */
+.tasks-card {
+  background: transparent;
+  border: none;
+  .card-header {
+    padding: 1rem 1.25rem;
+    .card-title {
+      font-size: 1.25rem;
+      color: #ffffff;
+      i { color: #9aa0a6; }
+    }
+  }
+
+  .card-body {
+    background: rgba(0,0,0,0.35);
+    border-radius: 8px;
+    padding: 1.5rem;
+  }
+}
+
+/* Filters row spacing */
+.filter-row {
+  .form-label {
+    color: #cfcfcf;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+}
+
+/* Table tweaks */
+.tasks-table {
+  .ant-table-container {
+    background: transparent;
+  }
+
+  thead.table-head th {
+    background: transparent;
+    color: #d7d7d7;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+
+  td {
+    vertical-align: middle;
+    padding: 1rem 1rem;
+    color: #e2e2e2;
+  }
+
+  /* Description column: make text bolder + higher contrast */
+  .description-cell {
+    .task-description {
+      color: #f1f1f1;        /* brighter text for contrast on dark bg */
+      font-weight: 600;      /* slightly bold to be more readable */
+      font-size: 0.95rem;    /* a touch larger */
+      opacity: 0.95;
+      display: inline-block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+  }
+
+  .title-cell {
+    strong {
+      color: #ffffff;
+      font-weight: 700;
+    }
+  }
+
+  .assigned-user-badge {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  .action-buttons button {
+    margin-left: 6px;
+  }
+}
+
+/* Modal form row spacing */
+.nz-modal .nz-form-item {
+  margin-bottom: 1rem;
+}
+
+/* Tag colors fallback (if you want more contrast) */
+::ng-deep nz-tag[nz-color="blue"] {
+  background: #0a6cf5 !important;
+  color: #fff !important;
+}
+::ng-deep nz-tag[nz-color="orange"] {
+  background: #f39c12 !important;
+  color: #fff !important;
+}
+::ng-deep nz-tag[nz-color="green"] {
+  background: #2ecc71 !important;
+  color: #fff !important;
+}
+
+/* Small responsive tweaks */
+@media (max-width: 768px) {
+  .tasks-card .card-body {
+    padding: 1rem;
+  }
+
+  .description-cell .task-description {
+    font-size: 0.92rem;
+  }
+}

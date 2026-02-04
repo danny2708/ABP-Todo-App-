@@ -1,4 +1,4 @@
-<div class="card">
+<div class="card tasks-card">
   <div class="card-header">
     <div class="row">
       <div class="col-md-6">
@@ -23,7 +23,7 @@
 
   <div class="card-body">
     <!-- Filters -->
-    <div class="row mb-3">
+    <div class="row mb-3 filter-row">
       <div class="col-md-3">
         <label class="form-label">
           {{ 'TaskManagement::Status' | abpLocalization }}
@@ -88,6 +88,7 @@
     <!-- Table -->
     <nz-table
       #tasksTable
+      class="tasks-table"
       [nzData]="taskData.items"
       [nzTotal]="taskData.totalCount"
       [nzLoading]="loading"
@@ -101,7 +102,7 @@
       [nzPageSizeOptions]="[5, 10, 20, 50]"
       nzSize="middle"
     >
-      <thead>
+      <thead class="table-head">
         <tr>
           <th nzWidth="30%">
             {{ 'TaskManagement::Title' | abpLocalization }}
@@ -123,10 +124,10 @@
 
       <tbody>
         <tr *ngFor="let task of tasksTable.data">
-          <td><strong>{{ task.title }}</strong></td>
+          <td class="title-cell"><strong>{{ task.title }}</strong></td>
 
-          <td>
-            <span class="text-muted">
+          <td class="description-cell">
+            <span class="task-description">
               {{
                 task.description
                   || ('TaskManagement::NoDescription' | abpLocalization)
@@ -146,7 +147,7 @@
           <td>
             <span
               *ngIf="task.assignedUserName; else unassignedTpl"
-              class="badge bg-info"
+              class="badge bg-info assigned-user-badge"
             >
               <i class="fa fa-user me-1"></i>
               {{ task.assignedUserName }}
@@ -160,7 +161,7 @@
           </td>
 
           <td>
-            <div class="btn-group btn-group-sm">
+            <div class="btn-group btn-group-sm action-buttons">
               <button
                 class="btn btn-outline-primary"
                 (click)="editTask(task)"
@@ -255,7 +256,11 @@
           {{ 'TaskManagement::AssignedUser' | abpLocalization }}
         </nz-form-label>
         <nz-form-control>
-          <nz-select formControlName="assignedUserId" nzAllowClear nzShowSearch>
+          <nz-select
+            formControlName="assignedUserId"
+            nzAllowClear
+            nzShowSearch
+          >
             <nz-option
               *ngFor="let user of users"
               [nzLabel]="user.userName"
