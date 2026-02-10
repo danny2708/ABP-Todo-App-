@@ -1,104 +1,71 @@
-/* Giao diện Dashboard Task Management Hiện Đại */
+/* Giao diện Siêu gọn & Chữ Đen Tuyệt đối */
 
-// 1. Stats Widgets
+// 1. Ép Chữ Đen
+.text-black, .text-dark, .form-label, td, span, label, th, input, .ant-select-selection-item {
+  color: #000 !important;
+  opacity: 1 !important;
+}
+
+.x-small { font-size: 0.7rem !important; }
+
+// 2. Thanh tìm kiếm Tối giản (Bỏ khung chữ nhật)
+.search-minimalist {
+  border: none !important;
+  border-bottom: 1px solid #ddd !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  text-align: center;
+  font-size: 0.9rem;
+  padding: 4px 0 !important;
+  width: 80%;
+  
+  &:focus {
+    border-bottom: 2px solid #1890ff !important;
+    outline: none;
+  }
+}
+
+// 3. Khôi phục Tính năng Ẩn nút Thao tác (Chỉ hiện khi Hover dòng)
+.row-actions {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.task-row:hover {
+  background-color: #f5faff !important;
+  .row-actions { opacity: 1; }
+}
+
+// 4. Thu nhỏ Stat Card & Bảng
 .stat-card {
-  background: #ffffff;
-  padding: 1.25rem;
-  border-radius: 16px;
   display: flex;
   align-items: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-  border: 1px solid #f0f0f0;
-  transition: transform 0.2s ease;
-
-  &:hover { transform: translateY(-5px); }
-
   .stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
-    margin-right: 1rem;
+    margin-right: 0.5rem;
+    font-size: 0.8rem;
   }
-  
-  h3 { font-weight: 800; font-family: sans-serif; }
 }
 
-.bg-soft-primary { background: #e7f1ff; color: #007bff; }
-.bg-soft-warning { background: #fff7e6; color: #ffa940; }
+::ng-deep {
+  .ant-table-thead > tr > th {
+    background: #fdfdfd !important;
+    padding: 6px 12px !important;
+    border-bottom: 1px solid #eee !important;
+  }
+  .ant-table-tbody > tr > td { padding: 6px 12px !important; }
+  .ant-form-item-label label { font-size: 0.8rem !important; font-weight: 700 !important; color: #000 !important; }
+  .ant-select-selector { border-radius: 4px !important; height: 32px !important; }
+}
+
+.bg-soft-primary { background: #e6f7ff; color: #1890ff; }
+.bg-soft-warning { background: #fff7e6; color: #fa8c16; }
 .bg-soft-success { background: #f6ffed; color: #52c41a; }
-
-// 2. Clear Button Fix
-.btn-clear {
-  background-color: transparent; // Xóa nền xám mặc định
-  border: 1px solid #e0e0e0;
-  color: #6c757d;
-  border-radius: 8px;
-  padding: 6px 16px;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background-color: #f8f9fa;
-    color: #dc3545; // Đổi sang đỏ khi hover để thể hiện hành động "clear"
-    border-color: #dc3545;
-  }
-}
-
-// 3. Card & Modern Table
-.tasks-card {
-  border-radius: 16px;
-  border: none;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  background: white;
-}
-
-.modern-table {
-  .ant-table { background: transparent; }
-  
-  thead > tr > th {
-    background: #fafafa;
-    color: #8c8c8c;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    font-weight: 700;
-    border-bottom: 1px solid #f0f0f0;
-  }
-
-  .task-row {
-    transition: all 0.2s ease;
-    &:hover {
-      background-color: #f8fbff !important;
-      .row-actions { opacity: 1; transform: translateX(0); }
-    }
-  }
-}
-
-// 4. Row Actions
-.row-actions {
-  opacity: 0;
-  transform: translateX(10px);
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.btn-icon-action {
-  background: white;
-  border: 1px solid #eee;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border-radius: 8px;
-  &:hover { box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-}
-
-// 5. Drawer Styles
-.drawer-footer {
-  border-top: 1px solid #f0f0f0;
-  background: white;
-}
-
-::ng-deep .ant-drawer-header { border-bottom: 1px solid #f0f0f0; }
-::ng-deep .ant-form-item-label label { color: #000 !important; font-weight: 600; }

@@ -5,12 +5,24 @@ using Volo.Abp.Domain.Repositories;
 
 namespace TaskManagement.Tasks
 {
-    // Đổi TaskItem thành AppTask ở đây
     public interface ITaskRepository : IRepository<AppTask, Guid>
     {
-        Task<List<AppTask>> GetTasksByAssignedUserAndStatusAsync(
-            Guid assignedUserId,
-            TaskStatus status
+        Task<AppTask> GetTaskByIdAsync(Guid id);
+        
+        // Bổ sung tham số filter và sorting
+        Task<List<AppTask>> GetListAsync(
+            int skipCount,
+            int maxResultCount,
+            string sorting,
+            string? filter = null,
+            TaskStatus? status = null,
+            Guid? assignedUserId = null
         );
+
+        Task<long> GetTotalCountAsync(string? filter = null, TaskStatus? status = null, Guid? assignedUserId = null);
+        
+        Task<AppTask> CreateTaskAsync(AppTask task);
+        Task<AppTask> UpdateTaskAsync(AppTask task);
+        Task DeleteTaskAsync(Guid id);
     }
 }

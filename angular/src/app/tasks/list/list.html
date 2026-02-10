@@ -1,120 +1,98 @@
-<div class="task-manager-container p-3">
-  <div class="row mb-4">
-    <div class="col-md-4">
-      <div class="stat-card">
-        <div class="stat-icon bg-soft-primary"><i class="fas fa-tasks"></i></div>
+<div class="task-manager-container p-3 bg-white min-vh-100">
+  <div class="row g-3 mb-3">
+    <div class="col-md-4" *ngFor="let stat of [{label: 'TOTAL TASKS', count: taskData.totalCount, color: 'text-primary', icon: 'fa-tasks', bg: 'bg-soft-primary'}, {label: 'IN PROGRESS', count: inProgressCount, color: 'text-warning', icon: 'fa-spinner', bg: 'bg-soft-warning'}, {label: 'COMPLETED', count: completedCount, color: 'text-success', icon: 'fa-check-double', bg: 'bg-soft-success'}]">
+      <div class="stat-card py-2 px-3 border shadow-none">
+        <div class="stat-icon" [class]="stat.bg"><i class="fas" [class]="stat.icon"></i></div>
         <div class="stat-content">
-          <span class="text-muted small fw-bold">
-            {{ 'TaskManagement::TOTAL TASKS' | abpLocalization }}
-          </span>
-          <h3 class="mb-0 text-dark">{{ taskData.totalCount }}</h3>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="stat-card">
-        <div class="stat-icon bg-soft-warning"><i class="fas fa-spinner"></i></div>
-        <div class="stat-content">
-          <span class="text-muted small fw-bold">
-            {{ 'TaskManagement::IN PROGRESS' | abpLocalization }}
-          </span>
-          <h3 class="mb-0 text-warning">{{ inProgressCount }}</h3>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="stat-card">
-        <div class="stat-icon bg-soft-success"><i class="fas fa-check-double"></i></div>
-        <div class="stat-content">
-          <span class="text-muted small fw-bold">
-            {{ 'TaskManagement::COMPLETED' | abpLocalization }}
-          </span>
-          <h3 class="mb-0 text-success">{{ completedCount }}</h3>
+          <span class="text-black small fw-bold text-uppercase">{{ stat.label }}</span>
+          <h4 class="mb-0 fw-bold" [class]="stat.color">{{ stat.count }}</h4>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="card tasks-card">
-    <div class="card-header border-0 bg-white pt-4 px-4">
+  <div class="card tasks-card border shadow-none">
+    <div class="card-header border-0 bg-white py-2 px-3">
       <div class="row align-items-center">
-        <div class="col-md-6">
-          <h4 class="card-title mb-0 text-dark fw-bold">
-            <i class="fas fa-clipboard-list me-2 text-primary"></i>
-            {{ 'TaskManagement::Menu:Tasks' | abpLocalization }}
-          </h4>
+        <div class="col-md-4">
+          <h5 class="mb-0 text-black fw-bold">
+            <i class="fas fa-clipboard-list me-2 text-primary"></i> Danh sách công việc
+          </h5>
         </div>
-        <div class="col-md-6 text-end">
-          <button *ngIf="hasCreatePermission" class="btn btn-primary shadow-sm rounded-pill px-4" type="button" (click)="createTask()">
-            <i class="fa fa-plus me-1"></i> {{ 'TaskManagement::NewTask' | abpLocalization }}
+        <div class="col-md-5">
+          <nz-input-group [nzPrefix]="prefixIconSearch" class="search-compact">
+            <input type="text" nz-input [(ngModel)]="filterText" (input)="onSearch()" placeholder="Tìm kiếm công việc..." />
+          </nz-input-group>
+          <ng-template #prefixIconSearch><i nz-icon nzType="search" class="text-muted"></i></ng-template>
+        </div>
+        <div class="col-md-3 text-end">
+          <button *ngIf="hasCreatePermission" nz-button nzType="primary" (click)="createTask()" class="rounded-pill px-3 shadow-none">
+            <i nz-icon nzType="plus"></i> Công việc mới
           </button>
         </div>
       </div>
     </div>
 
-    <div class="card-body px-4 pb-4">
-      <div class="row mb-4 filter-row align-items-end">
-        <div class="col-md-3">
-          <label class="form-label text-dark fw-bold small">{{ 'TaskManagement::Status' | abpLocalization }}</label>
-          <nz-select [(ngModel)]="filterStatus" nzAllowClear [nzPlaceHolder]="'TaskManagement::FilterByStatus' | abpLocalization" (ngModelChange)="onFilterChange()" class="w-100 custom-select">
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:New' | abpLocalization" [nzValue]="taskStatus.New"></nz-option>
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:InProgress' | abpLocalization" [nzValue]="taskStatus.InProgress"></nz-option>
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:Completed' | abpLocalization" [nzValue]="taskStatus.Completed"></nz-option>
+    <div class="card-body px-3 py-2">
+      <div class="row g-2 mb-3 align-items-end">
+        <div class="col-md-4">
+          <label class="form-label text-black fw-bold small mb-1">Trạng thái</label>
+          <nz-select [(ngModel)]="filterStatus" nzAllowClear nzPlaceHolder="Lọc trạng thái" (ngModelChange)="onFilterChange()" class="w-100">
+            <nz-option nzLabel="Mới" [nzValue]="taskStatus.New"></nz-option>
+            <nz-option nzLabel="Đang xử lý" [nzValue]="taskStatus.InProgress"></nz-option>
+            <nz-option nzLabel="Hoàn thành" [nzValue]="taskStatus.Completed"></nz-option>
           </nz-select>
         </div>
-
-        <div class="col-md-3">
-          <label class="form-label text-dark fw-bold small">{{ 'TaskManagement::AssignedUser' | abpLocalization }}</label>
-          <nz-select [(ngModel)]="filterAssignedUserId" nzAllowClear nzShowSearch [nzPlaceHolder]="'TaskManagement::FilterByUser' | abpLocalization" (ngModelChange)="onFilterChange()" class="w-100 custom-select">
+        <div class="col-md-4">
+          <label class="form-label text-black fw-bold small mb-1">Người thực hiện</label>
+          <nz-select [(ngModel)]="filterAssignedUserId" nzAllowClear nzShowSearch nzPlaceHolder="Lọc người dùng" (ngModelChange)="onFilterChange()" class="w-100">
             <nz-option *ngFor="let user of users" [nzLabel]="user.userName" [nzValue]="user.id"></nz-option>
           </nz-select>
         </div>
-
         <div class="col-md-2">
-          <button class="btn btn-clear fw-bold" (click)="clearFilters()">
-            <i class="fa fa-times me-1"></i> {{ 'TaskManagement::Clear' | abpLocalization }}
+          <button nz-button nzType="text" (click)="clearFilters()" class="text-black fw-bold small mt-4">
+            <i nz-icon nzType="close-circle"></i> Mặc định
           </button>
         </div>
       </div>
 
-      <nz-table #tasksTable class="modern-table" [nzData]="taskData.items" [nzTotal]="taskData.totalCount" [nzLoading]="loading" [nzFrontPagination]="false" [nzShowPagination]="true" [nzPageSize]="pageSize" [nzPageIndex]="pageIndex" (nzPageIndexChange)="onPageChange($event)" (nzPageSizeChange)="onPageSizeChange($event)" [nzShowSizeChanger]="true" nzSize="middle">
+      <nz-table #tasksTable class="modern-table" [nzData]="taskData.items" [nzTotal]="taskData.totalCount" [nzLoading]="loading" 
+                [nzFrontPagination]="false" [nzShowPagination]="true" [nzPageSize]="pageSize" [nzPageIndex]="pageIndex" 
+                (nzPageIndexChange)="onPageChange($event)" nzSize="small">
         <thead>
           <tr>
-            <th nzWidth="35%">{{ 'TaskManagement::Title' | abpLocalization }}</th>
-            <th nzWidth="20%">{{ 'TaskManagement::Status' | abpLocalization }}</th>
-            <th nzWidth="25%">{{ 'TaskManagement::AssignedUser' | abpLocalization }}</th>
-            <th nzWidth="20%"></th>
+            <th class="text-black fw-bold" nzShowSort nzColumnKey="title" (nzSortOrderChange)="onSortChange($event)">Tiêu đề</th>
+            <th class="text-black fw-bold" nzShowSort nzColumnKey="status" (nzSortOrderChange)="onSortChange($event)">Trạng thái</th>
+            <th class="text-black fw-bold">Người thực hiện</th>
+            <th class="text-end text-black fw-bold">Thao tác</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let task of tasksTable.data" class="task-row">
             <td>
               <div class="d-flex flex-column">
-                <span class="text-dark fw-bold mb-1">{{ task.title }}</span>
-                <small class="text-muted text-truncate" style="max-width: 250px;">{{ task.description || ('TaskManagement::NoDescription' | abpLocalization) }}</small>
+                <span class="text-black fw-bold mb-0">{{ task.title }}</span>
+                <small class="text-dark opacity-75 text-truncate" style="max-width: 200px;">{{ task.description }}</small>
               </div>
             </td>
             <td>
-              <nz-tag [nzColor]="getStatusColor(task.status)" class="rounded-pill border-0 px-3 fw-bold">
-                {{ ('TaskManagement::' + getStatusKey(task.status)) | abpLocalization }}
-              </nz-tag>
+              <nz-tag [nzColor]="getStatusColor(task.status)" class="rounded-pill border-0 fw-bold">{{ ('TaskManagement::' + getStatusKey(task.status)) | abpLocalization }}</nz-tag>
             </td>
             <td>
               <div class="d-flex align-items-center" *ngIf="task.assignedUserName; else unassignedTpl">
-                <nz-avatar nzSize="small" [nzText]="task.assignedUserName[0]" class="bg-primary me-2 shadow-sm"></nz-avatar>
-                <span class="text-dark fw-medium small">{{ task.assignedUserName }}</span>
-                <nz-tag *ngIf="task.assignedUserId === currentUser.id" nzColor="processing" class="ms-2 small-tag">Bạn</nz-tag>
+                <nz-avatar nzSize="small" [nzText]="task.assignedUserName[0]" class="bg-primary me-2"></nz-avatar>
+                <span class="text-black fw-medium small">{{ task.assignedUserName }}</span>
               </div>
-              <ng-template #unassignedTpl><span class="text-muted small italic"><i class="far fa-user-circle me-1"></i> {{ 'TaskManagement::Unassigned' | abpLocalization }}</span></ng-template>
+              <ng-template #unassignedTpl>
+                <span class="text-muted small fst-italic">
+                  <i class="fas fa-user-slash me-1"></i> {{ 'TaskManagement::Unassigned' | abpLocalization }}
+                </span>
+              </ng-template>
             </td>
             <td class="text-end">
               <div class="row-actions">
-                <button class="btn btn-icon-action text-primary me-2" (click)="editTask(task)" nz-tooltip [nzTooltipTitle]="'TaskManagement::Edit' | abpLocalization">
-                  <i class="fa fa-pencil-alt"></i>
-                </button>
-                <button *ngIf="hasDeletePermission" class="btn btn-icon-action text-danger" nz-popconfirm [nzPopconfirmTitle]="'TaskManagement::AreYouSureToDelete' | abpLocalization" (nzOnConfirm)="delete(task.id)" nz-tooltip [nzTooltipTitle]="'TaskManagement::Delete' | abpLocalization">
-                  <i class="fa fa-trash"></i>
-                </button>
+                <button nz-button nzType="text" (click)="editTask(task)"><i nz-icon nzType="edit" class="text-primary fs-5"></i></button>
+                <button *ngIf="hasDeletePermission" nz-button nzType="text" nz-popconfirm nzPopconfirmTitle="Xóa?" (nzOnConfirm)="delete(task.id)"><i nz-icon nzType="delete" class="text-danger fs-5"></i></button>
               </div>
             </td>
           </tr>
@@ -124,41 +102,32 @@
   </div>
 </div>
 
-<nz-drawer [(nzVisible)]="isModalOpen" [nzTitle]="drawerTitle" [nzWidth]="480" nzPlacement="right" (nzOnClose)="handleCancel()" [nzFooter]="drawerFooter">
+<nz-drawer [(nzVisible)]="isModalOpen" [nzTitle]="drawerTitle" [nzWidth]="400" nzPlacement="right" (nzOnClose)="handleCancel()" [nzFooter]="drawerFooter">
   <ng-template #drawerTitle>
-    <span class="fw-bold text-dark"><i class="fas fa-edit me-2 text-primary"></i> {{ isEditMode ? ('TaskManagement::EditTask' | abpLocalization) : ('TaskManagement::NewTask' | abpLocalization) }}</span>
+    <span class="fw-bold text-black"><i nz-icon nzType="form" class="text-primary me-2"></i> {{ isEditMode ? 'Cập nhật' : 'Tạo mới' }} công việc</span>
   </ng-template>
   <ng-container *nzDrawerContent>
-    <div *ngIf="isEditMode && !hasUpdatePermission" class="mb-3">
-        <div *ngIf="form.get('status').enabled" class="alert alert-info py-2 small">
-            <i class="fas fa-info-circle me-1"></i> Đây là công việc của bạn. Bạn chỉ có thể cập nhật trạng thái.
-        </div>
-        <div *ngIf="form.get('status').disabled" class="alert alert-warning py-2 small">
-            <i class="fas fa-lock me-1"></i> Bạn không thể sửa công việc này vì nó không được giao cho bạn.
-        </div>
-    </div>
-
-    <form nz-form [formGroup]="form" nzLayout="vertical" class="px-2">
-      <nz-form-item>
-        <nz-form-label nzRequired class="text-dark fw-bold">{{ 'TaskManagement::Title' | abpLocalization }}</nz-form-label>
-        <nz-form-control><input nz-input formControlName="title" placeholder="Enter task title..." class="rounded-3" /></nz-form-control>
+    <form nz-form [formGroup]="form" nzLayout="vertical">
+      <nz-form-item class="mb-2">
+        <nz-form-label nzRequired class="text-black fw-bold">Tiêu đề</nz-form-label>
+        <nz-form-control><input nz-input formControlName="title" placeholder="Tiêu đề..." /></nz-form-control>
       </nz-form-item>
-      <nz-form-item>
-        <nz-form-label class="text-dark fw-bold">{{ 'TaskManagement::Description' | abpLocalization }}</nz-form-label>
-        <nz-form-control><textarea nz-input formControlName="description" [nzAutosize]="{ minRows: 4, maxRows: 8 }" placeholder="Enter task details..." class="rounded-3"></textarea></nz-form-control>
+      <nz-form-item class="mb-2">
+        <nz-form-label class="text-black fw-bold">Mô tả</nz-form-label>
+        <nz-form-control><textarea nz-input formControlName="description" rows="3" placeholder="Mô tả..."></textarea></nz-form-control>
       </nz-form-item>
-      <nz-form-item>
-        <nz-form-label nzRequired class="text-dark fw-bold">{{ 'TaskManagement::Status' | abpLocalization }}</nz-form-label>
+      <nz-form-item class="mb-2">
+        <nz-form-label nzRequired class="text-black fw-bold">Trạng thái</nz-form-label>
         <nz-form-control>
           <nz-select formControlName="status" class="w-100">
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:New' | abpLocalization" [nzValue]="taskStatus.New"></nz-option>
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:InProgress' | abpLocalization" [nzValue]="taskStatus.InProgress"></nz-option>
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:Completed' | abpLocalization" [nzValue]="taskStatus.Completed"></nz-option>
+            <nz-option nzLabel="Mới" [nzValue]="taskStatus.New"></nz-option>
+            <nz-option nzLabel="Đang xử lý" [nzValue]="taskStatus.InProgress"></nz-option>
+            <nz-option nzLabel="Hoàn thành" [nzValue]="taskStatus.Completed"></nz-option>
           </nz-select>
         </nz-form-control>
       </nz-form-item>
-      <nz-form-item>
-        <nz-form-label class="text-dark fw-bold">{{ 'TaskManagement::AssignedUser' | abpLocalization }}</nz-form-label>
+      <nz-form-item class="mb-2">
+        <nz-form-label class="text-black fw-bold">Người nhận việc</nz-form-label>
         <nz-form-control>
           <nz-select formControlName="assignedUserId" nzAllowClear nzShowSearch class="w-100">
             <nz-option *ngFor="let user of users" [nzLabel]="user.userName" [nzValue]="user.id"></nz-option>
@@ -168,12 +137,9 @@
     </form>
   </ng-container>
   <ng-template #drawerFooter>
-    <div class="d-flex justify-content-end py-2 px-3">
-      <button class="btn btn-light border rounded-pill px-4 me-2 shadow-sm fw-bold" (click)="handleCancel()">{{ 'TaskManagement::Cancel' | abpLocalization }}</button>
-      <button class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" (click)="save()" 
-              [disabled]="form.invalid || form.disabled" [nzLoading]="saving">
-        <i class="fas fa-save me-1"></i> {{ isEditMode ? ('TaskManagement::Update' | abpLocalization) : ('TaskManagement::Create' | abpLocalization) }}
-      </button>
+    <div class="text-end">
+      <button nz-button nzType="default" (click)="handleCancel()" class="me-2 rounded-pill">Hủy</button>
+      <button nz-button nzType="primary" (click)="save()" [disabled]="form.invalid || form.disabled" [nzLoading]="saving" class="rounded-pill">Lưu lại</button>
     </div>
   </ng-template>
 </nz-drawer>

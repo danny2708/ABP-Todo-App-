@@ -1,11 +1,15 @@
-using System; 
-using Volo.Abp.Application.Dtos; 
-using TaskManagement.Tasks; 
+using System;
+using Volo.Abp.Application.Dtos;
 
-namespace TaskManagement.Tasks;
-
-public class GetTasksInput : PagedAndSortedResultRequestDto
+namespace TaskManagement.Tasks
 {
-    public TaskStatus? Status { get; set; }
-    public Guid? AssignedUserId { get; set; }
+    // Kế thừa PagedAndSorted để có SkipCount, MaxResultCount và Sorting
+    public class GetTasksInput : PagedAndSortedResultRequestDto 
+    {
+        public string? Filter { get; set; } 
+
+        public TaskStatus? Status { get; set; }
+
+        public Guid? AssignedUserId { get; set; }
+    }
 }

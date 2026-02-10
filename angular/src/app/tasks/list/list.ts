@@ -41,7 +41,10 @@ export class List implements OnInit {
   taskStatus = TaskStatus;
   currentUser: CurrentUserDto;
 
-  // Stats
+  // Search & Sort - Đã bổ sung biến filterText
+  filterText = '';
+  sorting = 'title asc'; 
+
   inProgressCount = 0;
   completedCount = 0;
 
@@ -51,7 +54,6 @@ export class List implements OnInit {
   isEditMode = false;
   selectedTaskId: string | null = null;
 
-  // Permissions
   hasCreatePermission = false;
   hasUpdatePermission = false;
   hasDeletePermission = false;
@@ -82,7 +84,6 @@ export class List implements OnInit {
       return;
     }
 
-    // Lấy thông tin User hiện tại và Quyền
     this.currentUser = this.configState.getOne('currentUser');
     this.hasCreatePermission = this.permissionService.getGrantedPolicy('TaskManagement.Tasks.Create');
     this.hasUpdatePermission = this.permissionService.getGrantedPolicy('TaskManagement.Tasks.Update');
@@ -121,8 +122,11 @@ export class List implements OnInit {
   private loadTasks(): void {
     const streamCreator = (query: any) => {
       this.loading = true;
+      // SỬA LỖI: Gửi kèm tham số filter và sorting về Backend
       return this.taskService.getList({
         ...query,
+        filter: this.filterText, 
+        sorting: this.sorting,
         status: this.filterStatus,
         assignedUserId: this.filterAssignedUserId,
       });
@@ -133,6 +137,21 @@ export class List implements OnInit {
       this.calculateStats();
       this.loading = false;
     });
+  }
+
+  // Lọc ngay khi nhập liệu
+  onSearch(): void {
+    this.list.page = 0;
+    this.list.get();
+  }
+
+  onSortChange(params: { key: string; value: string | null }): void {
+    if (params.value) {
+      this.sorting = `${params.key} ${params.value === 'descend' ? 'desc' : 'asc'}`;
+    } else {
+      this.sorting = 'title asc';
+    }
+    this.list.get();
   }
 
   private calculateStats(): void {
@@ -154,6 +173,7 @@ export class List implements OnInit {
   }
 
   clearFilters(): void {
+    this.filterText = '';
     this.filterStatus = null;
     this.filterAssignedUserId = null;
     this.list.get();
@@ -184,23 +204,19 @@ export class List implements OnInit {
     this.selectedTaskId = task.id;
     this.form.patchValue(task);
 
-    // KIỂM TRA QUYỀN SỞ HỮU (OWNERSHIP)
     const isAssignedToMe = task.assignedUserId === this.currentUser.id;
 
     if (!this.hasUpdatePermission) {
-      // Nếu không phải Admin: Khóa các thông tin chính
       this.form.get('title')?.disable();
       this.form.get('description')?.disable();
       this.form.get('assignedUserId')?.disable();
 
-      // Chỉ cho phép sửa Status NẾU task đó được giao cho mình
       if (isAssignedToMe) {
         this.form.get('status')?.enable();
       } else {
         this.form.get('status')?.disable();
       }
     } else {
-      // Nếu là Admin: Có toàn quyền
       this.form.enable();
     }
     
@@ -230,7 +246,6 @@ export class List implements OnInit {
       },
       error: (err) => {
         this.saving = false;
-        // Hiển thị lỗi từ Backend (ví dụ: "Bạn không có quyền sửa task của người khác")
         if (err.error?.error?.message) {
           this.message.error(err.error.error.message);
         }

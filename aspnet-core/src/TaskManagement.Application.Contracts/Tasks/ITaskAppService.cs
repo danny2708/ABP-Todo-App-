@@ -5,7 +5,6 @@ using Volo.Abp.Application.Services;
 
 namespace TaskManagement.Tasks
 {
-    // Bỏ ICrudAppService, dùng IApplicationService để tự định nghĩa
     public interface ITaskAppService : IApplicationService
     {
         Task<TaskDto> GetAsync(Guid id);
