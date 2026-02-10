@@ -5,5 +5,5 @@ namespace TaskManagement.Tasks;
 
 public class UserLookupDto : EntityDto<Guid>
 {
-    public string UserName { get; set; }
+    public string UserName { get; set; } = default!;
 }

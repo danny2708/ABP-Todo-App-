@@ -12,7 +12,7 @@
     "Permission:Tasks.Update": "Cập nhật công việc",
     "Permission:Tasks.Delete": "Xóa công việc",
     "Clear": "Mặc định",
-
+    "Unassigned": "Chưa được chỉ định",
     "Task": "Công việc",
     "Status": "Trạng thái",
     "AssignedTo": "Người thực hiện",
@@ -29,7 +29,9 @@
     "Create": "Tạo",
     "Update": "Cập nhật",
     "AreYouSureToDelete": "Bạn có chắc là muốn xóa không?",
-
+    "TOTAL TASKS": "TỔNG SỐ CÔNG VIỆC",
+    "IN PROGRESS": "CÔNG VIỆC ĐANG XỬ LÝ",
+    "COMPLETED": "CÔNG VIỆC HOÀN THÀNH",
     "Enum:TaskStatus.0": "Mới tạo",
     "Enum:TaskStatus.1": "Đang làm",
     "Enum:TaskStatus.2": "Hoàn thành",

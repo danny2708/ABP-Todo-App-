@@ -7,7 +7,7 @@ namespace TaskManagement.Tasks
     {
         [Required]
         [StringLength(128)]
-        public string Title { get; set; }
+        public string Title { get; set; } = default!;
 
         public string Description { get; set; }
 

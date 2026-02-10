@@ -3,15 +3,16 @@ using System.Threading.Tasks;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 
-namespace TaskManagement.Tasks;
-
-public interface ITaskAppService : 
-    ICrudAppService< 
-        TaskDto, 
-        Guid, 
-        GetTasksInput, 
-        CreateUpdateTaskDto>
+namespace TaskManagement.Tasks
 {
-    // Thêm phương thức để lấy danh sách User cho Dropdown
-    Task<ListResultDto<UserLookupDto>> GetUserLookupAsync();
+    // Bỏ ICrudAppService, dùng IApplicationService để tự định nghĩa
+    public interface ITaskAppService : IApplicationService
+    {
+        Task<TaskDto> GetAsync(Guid id);
+        Task<PagedResultDto<TaskDto>> GetListAsync(GetTasksInput input);
+        Task<TaskDto> CreateAsync(CreateUpdateTaskDto input);
+        Task<TaskDto> UpdateAsync(Guid id, CreateUpdateTaskDto input);
+        Task DeleteAsync(Guid id);
+        Task<ListResultDto<UserLookupDto>> GetUserLookupAsync();
+    }
 }

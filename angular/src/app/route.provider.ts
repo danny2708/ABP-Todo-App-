@@ -23,6 +23,7 @@ function configureRoutes() {
       iconClass: 'fas fa-check-square',
       order: 2,
       layout: eLayoutType.application,
+      requiredPolicy: 'TaskManagement.Tasks',
     },
   ]);
 }

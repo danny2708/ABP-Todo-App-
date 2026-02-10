@@ -1,288 +1,179 @@
-<div class="card tasks-card">
-  <div class="card-header">
-    <div class="row">
-      <div class="col-md-6">
-        <h5 class="card-title">
-          <i class="fas fa-tasks me-2"></i>
-          {{ 'TaskManagement::Menu:Tasks' | abpLocalization }}
-        </h5>
+<div class="task-manager-container p-3">
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-icon bg-soft-primary"><i class="fas fa-tasks"></i></div>
+        <div class="stat-content">
+          <span class="text-muted small fw-bold">
+            {{ 'TaskManagement::TOTAL TASKS' | abpLocalization }}
+          </span>
+          <h3 class="mb-0 text-dark">{{ taskData.totalCount }}</h3>
+        </div>
       </div>
-      <div class="col-md-6 text-end">
-        <button
-          class="btn btn-primary"
-          type="button"
-          (click)="createTask()"
-          *abpPermission="'TaskManagement.Tasks.Create'"
-        >
-          <i class="fa fa-plus me-1"></i>
-          {{ 'TaskManagement::NewTask' | abpLocalization }}
-        </button>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-icon bg-soft-warning"><i class="fas fa-spinner"></i></div>
+        <div class="stat-content">
+          <span class="text-muted small fw-bold">
+            {{ 'TaskManagement::IN PROGRESS' | abpLocalization }}
+          </span>
+          <h3 class="mb-0 text-warning">{{ inProgressCount }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-icon bg-soft-success"><i class="fas fa-check-double"></i></div>
+        <div class="stat-content">
+          <span class="text-muted small fw-bold">
+            {{ 'TaskManagement::COMPLETED' | abpLocalization }}
+          </span>
+          <h3 class="mb-0 text-success">{{ completedCount }}</h3>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="card-body">
-    <!-- Filters -->
-    <div class="row mb-3 filter-row">
-      <div class="col-md-3">
-        <label class="form-label">
-          {{ 'TaskManagement::Status' | abpLocalization }}
-        </label>
-
-        <nz-select
-          [(ngModel)]="filterStatus"
-          nzAllowClear
-          [nzPlaceHolder]="'TaskManagement::FilterByStatus' | abpLocalization"
-          (ngModelChange)="onFilterChange()"
-          style="width: 100%"
-        >
-          <nz-option
-            [nzLabel]="'TaskManagement::Enum:TaskStatus:New' | abpLocalization"
-            [nzValue]="taskStatus.New"
-          ></nz-option>
-
-          <nz-option
-            [nzLabel]="'TaskManagement::Enum:TaskStatus:InProgress' | abpLocalization"
-            [nzValue]="taskStatus.InProgress"
-          ></nz-option>
-
-          <nz-option
-            [nzLabel]="'TaskManagement::Enum:TaskStatus:Completed' | abpLocalization"
-            [nzValue]="taskStatus.Completed"
-          ></nz-option>
-        </nz-select>
-      </div>
-
-      <div class="col-md-3">
-        <label class="form-label">
-          {{ 'TaskManagement::AssignedUser' | abpLocalization }}
-        </label>
-
-        <nz-select
-          [(ngModel)]="filterAssignedUserId"
-          nzAllowClear
-          nzShowSearch
-          [nzPlaceHolder]="'TaskManagement::FilterByUser' | abpLocalization"
-          (ngModelChange)="onFilterChange()"
-          style="width: 100%"
-        >
-          <nz-option
-            *ngFor="let user of users"
-            [nzLabel]="user.userName"
-            [nzValue]="user.id"
-          ></nz-option>
-        </nz-select>
-      </div>
-
-      <div class="col-md-2">
-        <label class="form-label">&nbsp;</label>
-        <div>
-          <button class="btn btn-outline-secondary" (click)="clearFilters()">
-            <i class="fa fa-times me-1"></i>
-            {{ 'TaskManagement::Clear' | abpLocalization }}
+  <div class="card tasks-card">
+    <div class="card-header border-0 bg-white pt-4 px-4">
+      <div class="row align-items-center">
+        <div class="col-md-6">
+          <h4 class="card-title mb-0 text-dark fw-bold">
+            <i class="fas fa-clipboard-list me-2 text-primary"></i>
+            {{ 'TaskManagement::Menu:Tasks' | abpLocalization }}
+          </h4>
+        </div>
+        <div class="col-md-6 text-end">
+          <button *ngIf="hasCreatePermission" class="btn btn-primary shadow-sm rounded-pill px-4" type="button" (click)="createTask()">
+            <i class="fa fa-plus me-1"></i> {{ 'TaskManagement::NewTask' | abpLocalization }}
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Table -->
-    <nz-table
-      #tasksTable
-      class="tasks-table"
-      [nzData]="taskData.items"
-      [nzTotal]="taskData.totalCount"
-      [nzLoading]="loading"
-      [nzFrontPagination]="false"
-      [nzShowPagination]="true"
-      [nzPageSize]="pageSize"
-      [nzPageIndex]="pageIndex"
-      (nzPageIndexChange)="onPageChange($event)"
-      (nzPageSizeChange)="onPageSizeChange($event)"
-      [nzShowSizeChanger]="true"
-      [nzPageSizeOptions]="[5, 10, 20, 50]"
-      nzSize="middle"
-    >
-      <thead class="table-head">
-        <tr>
-          <th nzWidth="30%">
-            {{ 'TaskManagement::Title' | abpLocalization }}
-          </th>
-          <th nzWidth="30%">
-            {{ 'TaskManagement::Description' | abpLocalization }}
-          </th>
-          <th nzWidth="12%">
-            {{ 'TaskManagement::Status' | abpLocalization }}
-          </th>
-          <th nzWidth="15%">
-            {{ 'TaskManagement::AssignedUser' | abpLocalization }}
-          </th>
-          <th nzWidth="13%">
-            {{ 'TaskManagement::Actions' | abpLocalization }}
-          </th>
-        </tr>
-      </thead>
+    <div class="card-body px-4 pb-4">
+      <div class="row mb-4 filter-row align-items-end">
+        <div class="col-md-3">
+          <label class="form-label text-dark fw-bold small">{{ 'TaskManagement::Status' | abpLocalization }}</label>
+          <nz-select [(ngModel)]="filterStatus" nzAllowClear [nzPlaceHolder]="'TaskManagement::FilterByStatus' | abpLocalization" (ngModelChange)="onFilterChange()" class="w-100 custom-select">
+            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:New' | abpLocalization" [nzValue]="taskStatus.New"></nz-option>
+            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:InProgress' | abpLocalization" [nzValue]="taskStatus.InProgress"></nz-option>
+            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:Completed' | abpLocalization" [nzValue]="taskStatus.Completed"></nz-option>
+          </nz-select>
+        </div>
 
-      <tbody>
-        <tr *ngFor="let task of tasksTable.data">
-          <td class="title-cell"><strong>{{ task.title }}</strong></td>
+        <div class="col-md-3">
+          <label class="form-label text-dark fw-bold small">{{ 'TaskManagement::AssignedUser' | abpLocalization }}</label>
+          <nz-select [(ngModel)]="filterAssignedUserId" nzAllowClear nzShowSearch [nzPlaceHolder]="'TaskManagement::FilterByUser' | abpLocalization" (ngModelChange)="onFilterChange()" class="w-100 custom-select">
+            <nz-option *ngFor="let user of users" [nzLabel]="user.userName" [nzValue]="user.id"></nz-option>
+          </nz-select>
+        </div>
 
-          <td class="description-cell">
-            <span class="task-description">
-              {{
-                task.description
-                  || ('TaskManagement::NoDescription' | abpLocalization)
-              }}
-            </span>
-          </td>
+        <div class="col-md-2">
+          <button class="btn btn-clear fw-bold" (click)="clearFilters()">
+            <i class="fa fa-times me-1"></i> {{ 'TaskManagement::Clear' | abpLocalization }}
+          </button>
+        </div>
+      </div>
 
-          <td>
-            <nz-tag [nzColor]="getStatusColor(task.status)">
-              {{
-                ('TaskManagement::' + getStatusKey(task.status))
-                  | abpLocalization
-              }}
-            </nz-tag>
-          </td>
-
-          <td>
-            <span
-              *ngIf="task.assignedUserName; else unassignedTpl"
-              class="badge bg-info assigned-user-badge"
-            >
-              <i class="fa fa-user me-1"></i>
-              {{ task.assignedUserName }}
-            </span>
-
-            <ng-template #unassignedTpl>
-              <span class="text-muted">
-                {{ 'TaskManagement::Unassigned' | abpLocalization }}
-              </span>
-            </ng-template>
-          </td>
-
-          <td>
-            <div class="btn-group btn-group-sm action-buttons">
-              <button
-                class="btn btn-outline-primary"
-                (click)="editTask(task)"
-                *abpPermission="'TaskManagement.Tasks.Update'"
-                nz-tooltip
-                [nzTooltipTitle]="'TaskManagement::Edit' | abpLocalization"
-              >
-                <i class="fa fa-edit"></i>
-              </button>
-
-              <button
-                class="btn btn-outline-danger"
-                nz-popconfirm
-                [nzPopconfirmTitle]="'TaskManagement::AreYouSureToDelete' | abpLocalization"
-                (nzOnConfirm)="delete(task.id)"
-                *abpPermission="'TaskManagement.Tasks.Delete'"
-                nz-tooltip
-                [nzTooltipTitle]="'TaskManagement::Delete' | abpLocalization"
-              >
-                <i class="fa fa-trash"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </nz-table>
+      <nz-table #tasksTable class="modern-table" [nzData]="taskData.items" [nzTotal]="taskData.totalCount" [nzLoading]="loading" [nzFrontPagination]="false" [nzShowPagination]="true" [nzPageSize]="pageSize" [nzPageIndex]="pageIndex" (nzPageIndexChange)="onPageChange($event)" (nzPageSizeChange)="onPageSizeChange($event)" [nzShowSizeChanger]="true" nzSize="middle">
+        <thead>
+          <tr>
+            <th nzWidth="35%">{{ 'TaskManagement::Title' | abpLocalization }}</th>
+            <th nzWidth="20%">{{ 'TaskManagement::Status' | abpLocalization }}</th>
+            <th nzWidth="25%">{{ 'TaskManagement::AssignedUser' | abpLocalization }}</th>
+            <th nzWidth="20%"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let task of tasksTable.data" class="task-row">
+            <td>
+              <div class="d-flex flex-column">
+                <span class="text-dark fw-bold mb-1">{{ task.title }}</span>
+                <small class="text-muted text-truncate" style="max-width: 250px;">{{ task.description || ('TaskManagement::NoDescription' | abpLocalization) }}</small>
+              </div>
+            </td>
+            <td>
+              <nz-tag [nzColor]="getStatusColor(task.status)" class="rounded-pill border-0 px-3 fw-bold">
+                {{ ('TaskManagement::' + getStatusKey(task.status)) | abpLocalization }}
+              </nz-tag>
+            </td>
+            <td>
+              <div class="d-flex align-items-center" *ngIf="task.assignedUserName; else unassignedTpl">
+                <nz-avatar nzSize="small" [nzText]="task.assignedUserName[0]" class="bg-primary me-2 shadow-sm"></nz-avatar>
+                <span class="text-dark fw-medium small">{{ task.assignedUserName }}</span>
+                <nz-tag *ngIf="task.assignedUserId === currentUser.id" nzColor="processing" class="ms-2 small-tag">Bạn</nz-tag>
+              </div>
+              <ng-template #unassignedTpl><span class="text-muted small italic"><i class="far fa-user-circle me-1"></i> {{ 'TaskManagement::Unassigned' | abpLocalization }}</span></ng-template>
+            </td>
+            <td class="text-end">
+              <div class="row-actions">
+                <button class="btn btn-icon-action text-primary me-2" (click)="editTask(task)" nz-tooltip [nzTooltipTitle]="'TaskManagement::Edit' | abpLocalization">
+                  <i class="fa fa-pencil-alt"></i>
+                </button>
+                <button *ngIf="hasDeletePermission" class="btn btn-icon-action text-danger" nz-popconfirm [nzPopconfirmTitle]="'TaskManagement::AreYouSureToDelete' | abpLocalization" (nzOnConfirm)="delete(task.id)" nz-tooltip [nzTooltipTitle]="'TaskManagement::Delete' | abpLocalization">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </nz-table>
+    </div>
   </div>
 </div>
 
-<!-- Create / Edit Modal -->
-<nz-modal
-  [(nzVisible)]="isModalOpen"
-  [nzTitle]="
-    isEditMode
-      ? ('TaskManagement::EditTask' | abpLocalization)
-      : ('TaskManagement::NewTask' | abpLocalization)
-  "
-  (nzOnCancel)="handleCancel()"
-  [nzFooter]="modalFooter"
-  [nzWidth]="600"
->
-  <ng-container *nzModalContent>
-    <form nz-form [formGroup]="form" nzLayout="vertical">
+<nz-drawer [(nzVisible)]="isModalOpen" [nzTitle]="drawerTitle" [nzWidth]="480" nzPlacement="right" (nzOnClose)="handleCancel()" [nzFooter]="drawerFooter">
+  <ng-template #drawerTitle>
+    <span class="fw-bold text-dark"><i class="fas fa-edit me-2 text-primary"></i> {{ isEditMode ? ('TaskManagement::EditTask' | abpLocalization) : ('TaskManagement::NewTask' | abpLocalization) }}</span>
+  </ng-template>
+  <ng-container *nzDrawerContent>
+    <div *ngIf="isEditMode && !hasUpdatePermission" class="mb-3">
+        <div *ngIf="form.get('status').enabled" class="alert alert-info py-2 small">
+            <i class="fas fa-info-circle me-1"></i> Đây là công việc của bạn. Bạn chỉ có thể cập nhật trạng thái.
+        </div>
+        <div *ngIf="form.get('status').disabled" class="alert alert-warning py-2 small">
+            <i class="fas fa-lock me-1"></i> Bạn không thể sửa công việc này vì nó không được giao cho bạn.
+        </div>
+    </div>
+
+    <form nz-form [formGroup]="form" nzLayout="vertical" class="px-2">
       <nz-form-item>
-        <nz-form-label nzRequired>
-          {{ 'TaskManagement::Title' | abpLocalization }}
-        </nz-form-label>
-        <nz-form-control>
-          <input nz-input formControlName="title" />
-        </nz-form-control>
+        <nz-form-label nzRequired class="text-dark fw-bold">{{ 'TaskManagement::Title' | abpLocalization }}</nz-form-label>
+        <nz-form-control><input nz-input formControlName="title" placeholder="Enter task title..." class="rounded-3" /></nz-form-control>
       </nz-form-item>
-
       <nz-form-item>
-        <nz-form-label>
-          {{ 'TaskManagement::Description' | abpLocalization }}
-        </nz-form-label>
-        <nz-form-control>
-          <textarea
-            nz-input
-            formControlName="description"
-            [nzAutosize]="{ minRows: 3, maxRows: 6 }"
-          ></textarea>
-        </nz-form-control>
+        <nz-form-label class="text-dark fw-bold">{{ 'TaskManagement::Description' | abpLocalization }}</nz-form-label>
+        <nz-form-control><textarea nz-input formControlName="description" [nzAutosize]="{ minRows: 4, maxRows: 8 }" placeholder="Enter task details..." class="rounded-3"></textarea></nz-form-control>
       </nz-form-item>
-
       <nz-form-item>
-        <nz-form-label nzRequired>
-          {{ 'TaskManagement::Status' | abpLocalization }}
-        </nz-form-label>
+        <nz-form-label nzRequired class="text-dark fw-bold">{{ 'TaskManagement::Status' | abpLocalization }}</nz-form-label>
         <nz-form-control>
-          <nz-select formControlName="status">
-            <nz-option
-              [nzLabel]="'TaskManagement::Enum:TaskStatus:New' | abpLocalization"
-              [nzValue]="taskStatus.New"
-            ></nz-option>
-
-            <nz-option
-              [nzLabel]="'TaskManagement::Enum:TaskStatus:InProgress' | abpLocalization"
-              [nzValue]="taskStatus.InProgress"
-            ></nz-option>
-
-            <nz-option
-              [nzLabel]="'TaskManagement::Enum:TaskStatus:Completed' | abpLocalization"
-              [nzValue]="taskStatus.Completed"
-            ></nz-option>
+          <nz-select formControlName="status" class="w-100">
+            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:New' | abpLocalization" [nzValue]="taskStatus.New"></nz-option>
+            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:InProgress' | abpLocalization" [nzValue]="taskStatus.InProgress"></nz-option>
+            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:Completed' | abpLocalization" [nzValue]="taskStatus.Completed"></nz-option>
           </nz-select>
         </nz-form-control>
       </nz-form-item>
-
       <nz-form-item>
-        <nz-form-label>
-          {{ 'TaskManagement::AssignedUser' | abpLocalization }}
-        </nz-form-label>
+        <nz-form-label class="text-dark fw-bold">{{ 'TaskManagement::AssignedUser' | abpLocalization }}</nz-form-label>
         <nz-form-control>
-          <nz-select
-            formControlName="assignedUserId"
-            nzAllowClear
-            nzShowSearch
-          >
-            <nz-option
-              *ngFor="let user of users"
-              [nzLabel]="user.userName"
-              [nzValue]="user.id"
-            ></nz-option>
+          <nz-select formControlName="assignedUserId" nzAllowClear nzShowSearch class="w-100">
+            <nz-option *ngFor="let user of users" [nzLabel]="user.userName" [nzValue]="user.id"></nz-option>
           </nz-select>
         </nz-form-control>
       </nz-form-item>
     </form>
   </ng-container>
-
-  <ng-template #modalFooter>
-    <button nz-button nzType="default" (click)="handleCancel()">
-      {{ 'TaskManagement::Cancel' | abpLocalization }}
-    </button>
-
-    <button nz-button nzType="primary" (click)="save()" [nzLoading]="saving">
-      {{
-        isEditMode
-          ? ('TaskManagement::Update' | abpLocalization)
-          : ('TaskManagement::Create' | abpLocalization)
-      }}
-    </button>
+  <ng-template #drawerFooter>
+    <div class="d-flex justify-content-end py-2 px-3">
+      <button class="btn btn-light border rounded-pill px-4 me-2 shadow-sm fw-bold" (click)="handleCancel()">{{ 'TaskManagement::Cancel' | abpLocalization }}</button>
+      <button class="btn btn-primary rounded-pill px-4 shadow-sm fw-bold" (click)="save()" 
+              [disabled]="form.invalid || form.disabled" [nzLoading]="saving">
+        <i class="fas fa-save me-1"></i> {{ isEditMode ? ('TaskManagement::Update' | abpLocalization) : ('TaskManagement::Create' | abpLocalization) }}
+      </button>
+    </div>
   </ng-template>
-</nz-modal>
+</nz-drawer>

@@ -1,92 +1,104 @@
-/* list.scss - Cập nhật giao diện sáng, chữ đen nổi bật */
+/* Giao diện Dashboard Task Management Hiện Đại */
 
-.tasks-card {
-  background: #ffffff; /* Nền trắng cho card */
-  border: 1px solid #dee2e6;
-  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+// 1. Stats Widgets
+.stat-card {
+  background: #ffffff;
+  padding: 1.25rem;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f0f0f0;
+  transition: transform 0.2s ease;
+
+  &:hover { transform: translateY(-5px); }
+
+  .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    margin-right: 1rem;
+  }
+  
+  h3 { font-weight: 800; font-family: sans-serif; }
+}
+
+.bg-soft-primary { background: #e7f1ff; color: #007bff; }
+.bg-soft-warning { background: #fff7e6; color: #ffa940; }
+.bg-soft-success { background: #f6ffed; color: #52c41a; }
+
+// 2. Clear Button Fix
+.btn-clear {
+  background-color: transparent; // Xóa nền xám mặc định
+  border: 1px solid #e0e0e0;
+  color: #6c757d;
   border-radius: 8px;
+  padding: 6px 16px;
+  transition: all 0.2s ease;
 
-  .card-header {
-    padding: 1rem 1.25rem;
-    background-color: #f8f9fa; /* Nền tiêu đề nhẹ nhàng */
-    border-bottom: 1px solid #dee2e6;
-
-    .card-title {
-      font-size: 1.25rem;
-      color: #212529; /* Chữ tiêu đề màu đen */
-      font-weight: 700;
-      i { color: #007bff; } /* Icon màu xanh làm điểm nhấn */
-    }
-  }
-
-  .card-body {
-    background: #ffffff; /* Xóa nền xám/tối bên dưới */
-    border-radius: 0 0 8px 8px;
-    padding: 1.5rem;
+  &:hover {
+    background-color: #f8f9fa;
+    color: #dc3545; // Đổi sang đỏ khi hover để thể hiện hành động "clear"
+    border-color: #dc3545;
   }
 }
 
-/* Label của bộ lọc */
-.filter-row {
-  .form-label {
-    color: #212529; /* Chữ đen */
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-  }
-}
-
-/* Tinh chỉnh Table */
-.tasks-table {
+// 3. Card & Modern Table
+.tasks-card {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
   background: white;
+}
 
-  thead.table-head th {
-    background: #f1f3f5; /* Nền xám rất nhạt cho header table */
-    color: #212529;      /* Chữ đen nổi bật */
+.modern-table {
+  .ant-table { background: transparent; }
+  
+  thead > tr > th {
+    background: #fafafa;
+    color: #8c8c8c;
+    font-size: 0.75rem;
+    text-transform: uppercase;
     font-weight: 700;
-    border-bottom: 2px solid #dee2e6;
+    border-bottom: 1px solid #f0f0f0;
   }
 
-  td {
-    vertical-align: middle;
-    padding: 1rem 1rem;
-    color: #000000; /* Chữ nội dung màu đen hoàn toàn */
-    border-bottom: 1px solid #eee;
-  }
-
-  .title-cell strong {
-    color: #000000;
-    font-weight: 700;
-  }
-
-  .description-cell {
-    .task-description {
-      color: #333333;      /* Màu xám đậm cho mô tả */
-      font-weight: 500;
-      font-size: 0.95rem;
-      display: inline-block;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
+  .task-row {
+    transition: all 0.2s ease;
+    &:hover {
+      background-color: #f8fbff !important;
+      .row-actions { opacity: 1; transform: translateX(0); }
     }
   }
-
-  .assigned-user-badge {
-    font-weight: 600;
-    font-size: 0.85rem;
-    padding: 0.5em 0.8em;
-  }
 }
 
-/* Modal form label */
-::ng-deep .ant-form-item-label > label {
-  color: #000000 !important; /* Chữ trong modal màu đen */
-  font-weight: 600;
+// 4. Row Actions
+.row-actions {
+  opacity: 0;
+  transform: translateX(10px);
+  transition: all 0.2s ease;
+  white-space: nowrap;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .tasks-card .card-body {
-    padding: 1rem;
-  }
+.btn-icon-action {
+  background: white;
+  border: 1px solid #eee;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  &:hover { box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
 }
+
+// 5. Drawer Styles
+.drawer-footer {
+  border-top: 1px solid #f0f0f0;
+  background: white;
+}
+
+::ng-deep .ant-drawer-header { border-bottom: 1px solid #f0f0f0; }
+::ng-deep .ant-form-item-label label { color: #000 !important; font-weight: 600; }

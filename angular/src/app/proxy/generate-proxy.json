@@ -871,28 +871,20 @@
     },
     "app": {
       "rootPath": "app",
-      "remoteServiceName": "Default",
+      "remoteServiceName": "TaskManagement",
       "controllers": {
-        "TaskManagement.Tasks.TaskAppService": {
+        "TaskManagement.Tasks.TaskController": {
           "controllerName": "Task",
           "controllerGroupName": "Task",
           "isRemoteService": true,
           "isIntegrationService": false,
           "apiVersion": null,
-          "type": "TaskManagement.Tasks.TaskAppService",
+          "type": "TaskManagement.Tasks.TaskController",
           "interfaces": [
             {
               "type": "TaskManagement.Tasks.ITaskAppService",
               "name": "ITaskAppService",
               "methods": [
-                {
-                  "name": "GetUserLookupAsync",
-                  "parametersOnMethod": [],
-                  "returnValue": {
-                    "type": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>",
-                    "typeSimple": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>"
-                  }
-                },
                 {
                   "name": "GetAsync",
                   "parametersOnMethod": [
@@ -985,16 +977,61 @@
                     "type": "System.Void",
                     "typeSimple": "System.Void"
                   }
+                },
+                {
+                  "name": "GetUserLookupAsync",
+                  "parametersOnMethod": [],
+                  "returnValue": {
+                    "type": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>",
+                    "typeSimple": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>"
+                  }
                 }
               ]
             }
           ],
           "actions": {
+            "GetAsyncById": {
+              "uniqueName": "GetAsyncById",
+              "name": "GetAsync",
+              "httpMethod": "GET",
+              "url": "api/task/{id}",
+              "supportedVersions": [],
+              "parametersOnMethod": [
+                {
+                  "name": "id",
+                  "typeAsString": "System.Guid, System.Private.CoreLib",
+                  "type": "System.Guid",
+                  "typeSimple": "string",
+                  "isOptional": false,
+                  "defaultValue": null
+                }
+              ],
+              "parameters": [
+                {
+                  "nameOnMethod": "id",
+                  "name": "id",
+                  "jsonName": null,
+                  "type": "System.Guid",
+                  "typeSimple": "string",
+                  "isOptional": false,
+                  "defaultValue": null,
+                  "constraintTypes": [],
+                  "bindingSourceId": "Path",
+                  "descriptorName": ""
+                }
+              ],
+              "returnValue": {
+                "type": "TaskManagement.Tasks.TaskDto",
+                "typeSimple": "TaskManagement.Tasks.TaskDto"
+              },
+              "allowAnonymous": null,
+              "implementFrom": "TaskManagement.Tasks.ITaskAppService"
+            },
             "GetListAsyncByInput": {
               "uniqueName": "GetListAsyncByInput",
               "name": "GetListAsync",
               "httpMethod": "GET",
-              "url": "api/app/task",
+              "url": "api/task",
               "supportedVersions": [],
               "parametersOnMethod": [
                 {
@@ -1007,18 +1044,6 @@
                 }
               ],
               "parameters": [
-                {
-                  "nameOnMethod": "input",
-                  "name": "FilterText",
-                  "jsonName": null,
-                  "type": "System.String",
-                  "typeSimple": "string",
-                  "isOptional": false,
-                  "defaultValue": null,
-                  "constraintTypes": null,
-                  "bindingSourceId": "ModelBinding",
-                  "descriptorName": "input"
-                },
                 {
                   "nameOnMethod": "input",
                   "name": "Status",
@@ -1085,28 +1110,13 @@
                 "typeSimple": "Volo.Abp.Application.Dtos.PagedResultDto<TaskManagement.Tasks.TaskDto>"
               },
               "allowAnonymous": null,
-              "implementFrom": "Volo.Abp.Application.Services.IReadOnlyAppService<TaskManagement.Tasks.TaskDto,TaskManagement.Tasks.TaskDto,System.Guid,TaskManagement.Tasks.GetTasksInput>"
-            },
-            "GetUserLookupAsync": {
-              "uniqueName": "GetUserLookupAsync",
-              "name": "GetUserLookupAsync",
-              "httpMethod": "GET",
-              "url": "api/app/task/user-lookup",
-              "supportedVersions": [],
-              "parametersOnMethod": [],
-              "parameters": [],
-              "returnValue": {
-                "type": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>",
-                "typeSimple": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>"
-              },
-              "allowAnonymous": null,
               "implementFrom": "TaskManagement.Tasks.ITaskAppService"
             },
             "CreateAsyncByInput": {
               "uniqueName": "CreateAsyncByInput",
               "name": "CreateAsync",
               "httpMethod": "POST",
-              "url": "api/app/task",
+              "url": "api/task",
               "supportedVersions": [],
               "parametersOnMethod": [
                 {
@@ -1137,13 +1147,13 @@
                 "typeSimple": "TaskManagement.Tasks.TaskDto"
               },
               "allowAnonymous": null,
-              "implementFrom": "Volo.Abp.Application.Services.ICreateAppService<TaskManagement.Tasks.TaskDto,TaskManagement.Tasks.CreateUpdateTaskDto>"
+              "implementFrom": "TaskManagement.Tasks.ITaskAppService"
             },
             "UpdateAsyncByIdAndInput": {
               "uniqueName": "UpdateAsyncByIdAndInput",
               "name": "UpdateAsync",
               "httpMethod": "PUT",
-              "url": "api/app/task/{id}",
+              "url": "api/task/{id}",
               "supportedVersions": [],
               "parametersOnMethod": [
                 {
@@ -1194,13 +1204,13 @@
                 "typeSimple": "TaskManagement.Tasks.TaskDto"
               },
               "allowAnonymous": null,
-              "implementFrom": "Volo.Abp.Application.Services.IUpdateAppService<TaskManagement.Tasks.TaskDto,System.Guid,TaskManagement.Tasks.CreateUpdateTaskDto>"
+              "implementFrom": "TaskManagement.Tasks.ITaskAppService"
             },
             "DeleteAsyncById": {
               "uniqueName": "DeleteAsyncById",
               "name": "DeleteAsync",
               "httpMethod": "DELETE",
-              "url": "api/app/task/{id}",
+              "url": "api/task/{id}",
               "supportedVersions": [],
               "parametersOnMethod": [
                 {
@@ -1231,44 +1241,22 @@
                 "typeSimple": "System.Void"
               },
               "allowAnonymous": null,
-              "implementFrom": "Volo.Abp.Application.Services.IDeleteAppService<System.Guid>"
+              "implementFrom": "TaskManagement.Tasks.ITaskAppService"
             },
-            "GetAsyncById": {
-              "uniqueName": "GetAsyncById",
-              "name": "GetAsync",
+            "GetUserLookupAsync": {
+              "uniqueName": "GetUserLookupAsync",
+              "name": "GetUserLookupAsync",
               "httpMethod": "GET",
-              "url": "api/app/task/{id}",
+              "url": "api/task/user-lookup",
               "supportedVersions": [],
-              "parametersOnMethod": [
-                {
-                  "name": "id",
-                  "typeAsString": "System.Guid, System.Private.CoreLib",
-                  "type": "System.Guid",
-                  "typeSimple": "string",
-                  "isOptional": false,
-                  "defaultValue": null
-                }
-              ],
-              "parameters": [
-                {
-                  "nameOnMethod": "id",
-                  "name": "id",
-                  "jsonName": null,
-                  "type": "System.Guid",
-                  "typeSimple": "string",
-                  "isOptional": false,
-                  "defaultValue": null,
-                  "constraintTypes": [],
-                  "bindingSourceId": "Path",
-                  "descriptorName": ""
-                }
-              ],
+              "parametersOnMethod": [],
+              "parameters": [],
               "returnValue": {
-                "type": "TaskManagement.Tasks.TaskDto",
-                "typeSimple": "TaskManagement.Tasks.TaskDto"
+                "type": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>",
+                "typeSimple": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>"
               },
               "allowAnonymous": null,
-              "implementFrom": "Volo.Abp.Application.Services.IReadOnlyAppService<TaskManagement.Tasks.TaskDto,TaskManagement.Tasks.TaskDto,System.Guid,TaskManagement.Tasks.GetTasksInput>"
+              "implementFrom": "TaskManagement.Tasks.ITaskAppService"
             }
           }
         }
@@ -4090,8 +4078,8 @@
           "type": "System.String",
           "typeSimple": "string",
           "isRequired": false,
-          "minLength": 0,
-          "maxLength": 2048,
+          "minLength": null,
+          "maxLength": null,
           "minimum": null,
           "maximum": null,
           "regex": null,
@@ -4102,7 +4090,7 @@
           "jsonName": null,
           "type": "TaskManagement.Tasks.TaskStatus",
           "typeSimple": "enum",
-          "isRequired": true,
+          "isRequired": false,
           "minLength": null,
           "maxLength": null,
           "minimum": null,
@@ -4132,19 +4120,6 @@
       "enumValues": null,
       "genericArguments": null,
       "properties": [
-        {
-          "name": "FilterText",
-          "jsonName": null,
-          "type": "System.String",
-          "typeSimple": "string",
-          "isRequired": false,
-          "minLength": null,
-          "maxLength": null,
-          "minimum": null,
-          "maximum": null,
-          "regex": null,
-          "isNullable": true
-        },
         {
           "name": "Status",
           "jsonName": null,
@@ -4231,6 +4206,19 @@
           "maximum": null,
           "regex": null,
           "isNullable": true
+        },
+        {
+          "name": "AssignedUserName",
+          "jsonName": null,
+          "type": "System.String",
+          "typeSimple": "string",
+          "isRequired": false,
+          "minLength": null,
+          "maxLength": null,
+          "minimum": null,
+          "maximum": null,
+          "regex": null,
+          "isNullable": false
         }
       ]
     },

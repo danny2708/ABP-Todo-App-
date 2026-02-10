@@ -8,13 +8,13 @@ import { Injectable, inject } from '@angular/core';
 })
 export class TaskService {
   private restService = inject(RestService);
-  apiName = 'Default';
+  apiName = 'TaskManagement';
   
 
   create = (input: CreateUpdateTaskDto, config?: Partial<Rest.Config>) =>
     this.restService.request<any, TaskDto>({
       method: 'POST',
-      url: '/api/app/task',
+      url: '/api/task',
       body: input,
     },
     { apiName: this.apiName,...config });
@@ -23,7 +23,7 @@ export class TaskService {
   delete = (id: string, config?: Partial<Rest.Config>) =>
     this.restService.request<any, void>({
       method: 'DELETE',
-      url: `/api/app/task/${id}`,
+      url: `/api/task/${id}`,
     },
     { apiName: this.apiName,...config });
   
@@ -31,7 +31,7 @@ export class TaskService {
   get = (id: string, config?: Partial<Rest.Config>) =>
     this.restService.request<any, TaskDto>({
       method: 'GET',
-      url: `/api/app/task/${id}`,
+      url: `/api/task/${id}`,
     },
     { apiName: this.apiName,...config });
   
@@ -39,8 +39,8 @@ export class TaskService {
   getList = (input: GetTasksInput, config?: Partial<Rest.Config>) =>
     this.restService.request<any, PagedResultDto<TaskDto>>({
       method: 'GET',
-      url: '/api/app/task',
-      params: { filterText: input.filterText, status: input.status, assignedUserId: input.assignedUserId, sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
+      url: '/api/task',
+      params: { status: input.status, assignedUserId: input.assignedUserId, sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
     },
     { apiName: this.apiName,...config });
   
@@ -48,7 +48,7 @@ export class TaskService {
   getUserLookup = (config?: Partial<Rest.Config>) =>
     this.restService.request<any, ListResultDto<UserLookupDto>>({
       method: 'GET',
-      url: '/api/app/task/user-lookup',
+      url: '/api/task/user-lookup',
     },
     { apiName: this.apiName,...config });
   
@@ -56,7 +56,7 @@ export class TaskService {
   update = (id: string, input: CreateUpdateTaskDto, config?: Partial<Rest.Config>) =>
     this.restService.request<any, TaskDto>({
       method: 'PUT',
-      url: `/api/app/task/${id}`,
+      url: `/api/task/${id}`,
       body: input,
     },
     { apiName: this.apiName,...config });

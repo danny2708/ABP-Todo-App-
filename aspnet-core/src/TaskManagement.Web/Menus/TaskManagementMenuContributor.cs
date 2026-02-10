@@ -40,7 +40,6 @@ public class TaskManagementMenuContributor : IMenuContributor
         }
         else
         {
-            administration.TryRemoveMenuItem(TenantManagementMenuNames.GroupName);
         }
 
         administration.SetSubItemOrder(IdentityMenuNames.GroupName, 2);

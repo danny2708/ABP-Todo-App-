@@ -21,6 +21,7 @@ public class TaskManagementPermissionDefinitionProvider : PermissionDefinitionPr
         tasksPermission.AddChild(TaskManagementPermissions.Tasks.Create, L("Permission:Tasks.Create"));
         tasksPermission.AddChild(TaskManagementPermissions.Tasks.Update, L("Permission:Tasks.Update"));
         tasksPermission.AddChild(TaskManagementPermissions.Tasks.Delete, L("Permission:Tasks.Delete"));
+        tasksPermission.AddChild(TaskManagementPermissions.Tasks.UpdateStatus, L("Permission:Tasks.UpdateStatus"));
     }
 
     private static LocalizableString L(string name)

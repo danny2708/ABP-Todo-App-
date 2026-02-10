@@ -4,12 +4,11 @@ import type { AuditedEntityDto, EntityDto, PagedAndSortedResultRequestDto } from
 export interface CreateUpdateTaskDto {
   title: string;
   description?: string;
-  status: TaskStatus;
+  status?: TaskStatus;
   assignedUserId?: string | null;
 }
 
 export interface GetTasksInput extends PagedAndSortedResultRequestDto {
-  filterText?: string | null;
   status?: TaskStatus | null;
   assignedUserId?: string | null;
 }
@@ -19,6 +18,7 @@ export interface TaskDto extends AuditedEntityDto<string> {
   description?: string;
   status?: TaskStatus;
   assignedUserId?: string | null;
+  assignedUserName?: string;
 }
 
 export interface UserLookupDto extends EntityDto<string> {

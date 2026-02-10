@@ -133,10 +133,10 @@ public class TaskManagementHttpApiHostModule : AbpModule
 
     private void ConfigureConventionalControllers()
     {
-        Configure<AbpAspNetCoreMvcOptions>(options =>
-        {
-            options.ConventionalControllers.Create(typeof(TaskManagementApplicationModule).Assembly);
-        });
+        // Configure<AbpAspNetCoreMvcOptions>(options =>
+        // {
+        //     options.ConventionalControllers.Create(typeof(TaskManagementApplicationModule).Assembly);
+        // });
     }
 
     private static void ConfigureSwaggerServices(ServiceConfigurationContext context, IConfiguration configuration)
