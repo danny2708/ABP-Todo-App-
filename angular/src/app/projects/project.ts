@@ -11,10 +11,11 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzModalModule } from 'ng-zorro-antd/modal';
+import { NzDrawerModule } from 'ng-zorro-antd/drawer'; // Thêm Drawer
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
+import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 
 import { ProjectService, ProjectDto } from 'src/app/proxy/projects';
 import { TaskService } from 'src/app/proxy/tasks';
@@ -23,11 +24,12 @@ import { TaskService } from 'src/app/proxy/tasks';
   selector: 'app-project',
   standalone: true,
   templateUrl: './project.html',
+  styleUrls: ['../style/global.scss'],
   providers: [ListService],
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, CoreModule, ThemeSharedModule,
     NzCardModule, NzProgressModule, NzButtonModule, NzIconModule, NzAvatarModule,
-    NzInputModule, NzModalModule, NzFormModule, NzSelectModule
+    NzInputModule, NzDrawerModule, NzFormModule, NzSelectModule, NzToolTipModule
   ],
 })
 export class ProjectComponent implements OnInit {
@@ -36,8 +38,13 @@ export class ProjectComponent implements OnInit {
   loading = false;
   isModalOpen = false;
   isEditMode = false;
+  saving = false;
   form!: FormGroup;
   filterText = '';
+  
+  // Logic sắp xếp
+  sorting = 'CreationTime DESC';
+  isCreationSortDesc = true;
 
   constructor(
     public readonly list: ListService,
@@ -58,7 +65,11 @@ export class ProjectComponent implements OnInit {
   loadProjects(): void {
     const streamCreator = (query) => {
       this.loading = true;
-      return this.projectService.getList({ ...query, filterText: this.filterText });
+      return this.projectService.getList({ 
+        ...query, 
+        filterText: this.filterText,
+        sorting: this.sorting // Gửi kèm logic sắp xếp lên BE
+      });
     };
 
     this.list.hookToQuery(streamCreator).subscribe(res => {
@@ -67,12 +78,20 @@ export class ProjectComponent implements OnInit {
     });
   }
 
+  // Toggle sắp xếp tăng/giảm dần
+  toggleCreationSort(): void {
+    this.isCreationSortDesc = !this.isCreationSortDesc;
+    this.sorting = `CreationTime ${this.isCreationSortDesc ? 'DESC' : 'ASC'}`;
+    this.list.get();
+  }
+
   loadUsers(): void {
     this.taskService.getUserLookup().subscribe(res => this.users = res.items);
   }
 
   buildForm(): void {
     this.form = this.fb.group({
+      id: [null],
       name: ['', [Validators.required, Validators.maxLength(128)]],
       description: [''],
       projectManagerId: [null, Validators.required],
@@ -81,13 +100,13 @@ export class ProjectComponent implements OnInit {
   }
 
   openTasks(projectId: string): void {
-    this.router.navigate(['/tasks'], { queryParams: { projectId } });
+    this.router.navigate(['/tasks/details'], { queryParams: { projectId } });
   }
 
   createProject(): void {
     this.isEditMode = false;
-    this.form.reset();
-    this.isModalOpen = true;
+    this.form.reset({ memberIds: [] });
+    this.isModalOpen = true; // Kích hoạt Drawer
   }
 
   editProject(event: Event, project: ProjectDto): void {
@@ -101,6 +120,7 @@ export class ProjectComponent implements OnInit {
 
   save(): void {
     if (this.form.invalid) return;
+    this.saving = true;
     const request = this.isEditMode 
       ? this.projectService.update(this.form.value.id, this.form.value)
       : this.projectService.create(this.form.value);
@@ -108,6 +128,7 @@ export class ProjectComponent implements OnInit {
     request.subscribe(() => {
       this.message.success('Thành công!');
       this.isModalOpen = false;
+      this.saving = false;
       this.list.get();
     });
   }
@@ -118,5 +139,9 @@ export class ProjectComponent implements OnInit {
       this.message.success('Đã xóa!');
       this.list.get();
     });
+  }
+
+  handleCancel(): void {
+    this.isModalOpen = false;
   }
 }
