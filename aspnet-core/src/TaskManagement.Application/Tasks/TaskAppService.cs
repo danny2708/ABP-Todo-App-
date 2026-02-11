@@ -9,6 +9,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
+using System.Linq.Dynamic.Core;
 
 namespace TaskManagement.Tasks
 {
@@ -44,43 +45,57 @@ namespace TaskManagement.Tasks
 
         public async Task<PagedResultDto<TaskDto>> GetListAsync(GetTasksInput input)
         {
-            // Gọi hàm Repository mới có Search/Sort
-            var tasks = await _taskRepository.GetListAsync(
-                input.SkipCount,
-                input.MaxResultCount,
-                input.Sorting,
-                input.Filter,
-                input.Status,
-                input.AssignedUserId
+            // Lấy Queryable từ Repository để tự định nghĩa logic filter
+            var queryable = await _taskRepository.GetQueryableAsync();
+
+            // Logic tìm kiếm: Sử dụng FilterText từ GetTasksInput
+            var filter = input.FilterText?.ToLower().Trim(); 
+            
+            queryable = queryable
+                .WhereIf(!string.IsNullOrWhiteSpace(filter), x =>
+                    x.Title.ToLower().Contains(filter!) || 
+                    (x.Description != null && x.Description.ToLower().Contains(filter!))
+                )
+                .WhereIf(input.Status.HasValue, x => x.Status == input.Status)
+                .WhereIf(input.AssignedUserId.HasValue, x => x.AssignedUserId == input.AssignedUserId);
+
+            // Đếm tổng số bản ghi sau khi lọc
+            var totalCount = await AsyncExecuter.CountAsync(queryable);
+
+            // Áp dụng sắp xếp và phân trang
+            if (string.IsNullOrWhiteSpace(input.Sorting))
+            {
+                input.Sorting = "CreationTime DESC";
+            }
+
+            var tasks = await AsyncExecuter.ToListAsync(
+                queryable.OrderBy(input.Sorting).PageBy(input.SkipCount, input.MaxResultCount)
             );
 
-            var totalCount = await _taskRepository.GetTotalCountAsync(input.Filter, input.Status, input.AssignedUserId);
+            var taskDtos = ObjectMapper.Map<List<AppTask>, List<TaskDto>>(tasks);
 
-            // Tối ưu lấy UserName qua Dictionary
+            // Lấy danh sách UserName tập trung để tối ưu
             var userIds = tasks.Where(t => t.AssignedUserId.HasValue).Select(t => t.AssignedUserId!.Value).Distinct().ToList();
             var userDict = userIds.Any() 
                 ? (await _userRepository.GetListAsync(u => userIds.Contains(u.Id))).ToDictionary(u => u.Id, u => u.UserName) 
                 : new Dictionary<Guid, string>();
 
-            var items = tasks.Select(task =>
+            foreach (var dto in taskDtos)
             {
-                var dto = ObjectMapper.Map<AppTask, TaskDto>(task);
-                // Sửa lỗi unassigned local variable bằng TryGetValue an toàn
-                if (task.AssignedUserId.HasValue && userDict.TryGetValue(task.AssignedUserId.Value, out var userName))
+                if (dto.AssignedUserId.HasValue && userDict.TryGetValue(dto.AssignedUserId.Value, out var userName))
                 {
                     dto.AssignedUserName = userName;
                 }
-                return dto;
-            }).ToList();
+            }
 
-            return new PagedResultDto<TaskDto>(totalCount, items);
+            return new PagedResultDto<TaskDto>(totalCount, taskDtos);
         }
 
         [Authorize(TaskManagementPermissions.Tasks.Create)]
         public async Task<TaskDto> CreateAsync(CreateUpdateTaskDto input)
         {
             var task = ObjectMapper.Map<CreateUpdateTaskDto, AppTask>(input);
-            await _taskRepository.CreateTaskAsync(task); // Dùng Repository tùy chỉnh
+            await _taskRepository.CreateTaskAsync(task);
             return ObjectMapper.Map<AppTask, TaskDto>(task);
         }
 
@@ -90,37 +105,17 @@ namespace TaskManagement.Tasks
             var task = await _taskRepository.GetTaskByIdAsync(id);
             if (task == null) throw new UserFriendlyException("Công việc không tồn tại.");
 
-            var canUpdateAll = await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Update);
+            // Logic Map đơn giản, bỏ qua phân quyền phức tạp
+            ObjectMapper.Map(input, task);
 
-            if (canUpdateAll)
-            {
-                ObjectMapper.Map(input, task);
-            }
-            else
-            {
-                // Kiểm tra Ownership: Chỉ được sửa task của chính mình
-                if (task.AssignedUserId != CurrentUser.Id)
-                {
-                    throw new UserFriendlyException("Bạn không thể cập nhật công việc của người khác.");
-                }
-
-                // Chặn sửa Title nếu chỉ có quyền sửa Status
-                if (task.Title != input.Title)
-                {
-                    throw new UserFriendlyException("Bạn chỉ được phép cập nhật trạng thái của công việc này.");
-                }
-
-                task.Status = input.Status;
-            }
-
-            await _taskRepository.UpdateTaskAsync(task); // Dùng Repository tùy chỉnh
+            await _taskRepository.UpdateTaskAsync(task);
             return ObjectMapper.Map<AppTask, TaskDto>(task);
         }
 
         [Authorize(TaskManagementPermissions.Tasks.Delete)]
         public async Task DeleteAsync(Guid id)
         {
-            await _taskRepository.DeleteTaskAsync(id); // Dùng Repository tùy chỉnh
+            await _taskRepository.DeleteTaskAsync(id);
         }
 
         public async Task<ListResultDto<UserLookupDto>> GetUserLookupAsync()

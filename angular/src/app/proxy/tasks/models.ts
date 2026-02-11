@@ -9,6 +9,7 @@ export interface CreateUpdateTaskDto {
 }
 
 export interface GetTasksInput extends PagedAndSortedResultRequestDto {
+  filterText?: string | null;
   status?: TaskStatus | null;
   assignedUserId?: string | null;
 }

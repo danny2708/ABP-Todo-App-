@@ -41,13 +41,12 @@ export class List implements OnInit {
   taskStatus = TaskStatus;
   currentUser: CurrentUserDto;
 
-  // Search & Sort - Đã bổ sung biến filterText
   filterText = '';
-  sorting = 'title asc'; 
+  sorting = 'CreationTime DESC'; // Mặc định sắp xếp theo thời gian mới nhất
+  isCreationSortDesc = true; // Trạng thái hiện tại của icon sắp xếp thời gian
 
   inProgressCount = 0;
   completedCount = 0;
-
   loading = false;
   saving = false;
   isModalOpen = false;
@@ -122,10 +121,9 @@ export class List implements OnInit {
   private loadTasks(): void {
     const streamCreator = (query: any) => {
       this.loading = true;
-      // SỬA LỖI: Gửi kèm tham số filter và sorting về Backend
       return this.taskService.getList({
         ...query,
-        filter: this.filterText, 
+        filterText: this.filterText, 
         sorting: this.sorting,
         status: this.filterStatus,
         assignedUserId: this.filterAssignedUserId,
@@ -139,17 +137,24 @@ export class List implements OnInit {
     });
   }
 
-  // Lọc ngay khi nhập liệu
   onSearch(): void {
     this.list.page = 0;
     this.list.get();
   }
 
+  // Hàm toggle sắp xếp theo thời gian (A-z icon)
+  toggleCreationSort(event: MouseEvent): void {
+    event.stopPropagation(); // Ngăn sự kiện sort mặc định của nz-table
+    this.isCreationSortDesc = !this.isCreationSortDesc;
+    this.sorting = `CreationTime ${this.isCreationSortDesc ? 'DESC' : 'ASC'}`;
+    this.list.get();
+  }
+
   onSortChange(params: { key: string; value: string | null }): void {
     if (params.value) {
-      this.sorting = `${params.key} ${params.value === 'descend' ? 'desc' : 'asc'}`;
+      this.sorting = `${params.key} ${params.value === 'descend' ? 'DESC' : 'ASC'}`;
     } else {
-      this.sorting = 'title asc';
+      this.sorting = 'CreationTime DESC';
     }
     this.list.get();
   }
@@ -176,6 +181,8 @@ export class List implements OnInit {
     this.filterText = '';
     this.filterStatus = null;
     this.filterAssignedUserId = null;
+    this.sorting = 'CreationTime DESC';
+    this.isCreationSortDesc = true;
     this.list.get();
   }
 
@@ -203,23 +210,17 @@ export class List implements OnInit {
     this.isEditMode = true;
     this.selectedTaskId = task.id;
     this.form.patchValue(task);
-
     const isAssignedToMe = task.assignedUserId === this.currentUser.id;
 
     if (!this.hasUpdatePermission) {
       this.form.get('title')?.disable();
       this.form.get('description')?.disable();
       this.form.get('assignedUserId')?.disable();
-
-      if (isAssignedToMe) {
-        this.form.get('status')?.enable();
-      } else {
-        this.form.get('status')?.disable();
-      }
+      if (isAssignedToMe) this.form.get('status')?.enable();
+      else this.form.get('status')?.disable();
     } else {
       this.form.enable();
     }
-    
     this.isModalOpen = true;
   }
 
@@ -230,16 +231,14 @@ export class List implements OnInit {
   save(): void {
     if (this.form.invalid) return;
     this.saving = true;
-
     const formData = this.form.getRawValue();
-
     const request = this.isEditMode && this.selectedTaskId
       ? this.taskService.update(this.selectedTaskId, formData)
       : this.taskService.create(formData);
 
     request.subscribe({
       next: () => {
-        this.message.success(this.isEditMode ? 'Updated successfully!' : 'Created successfully!');
+        this.message.success('Thành công!');
         this.isModalOpen = false;
         this.list.get();
         this.saving = false;
@@ -258,7 +257,7 @@ export class List implements OnInit {
     this.confirmation.warn('::AreYouSureToDelete', '::ConfirmDelete').subscribe(status => {
       if (status === Confirmation.Status.confirm) {
         this.taskService.delete(id).subscribe(() => {
-          this.message.success('Deleted successfully!');
+          this.message.success('Đã xóa!');
           this.list.get();
         });
       }
@@ -275,7 +274,7 @@ export class List implements OnInit {
   }
 
   getStatusKey(status: TaskStatus | undefined | null): string {
-    if (status === null || status === undefined) return '::Unassigned';
+    if (status === null || status === undefined) return 'Unassigned';
     const name = (TaskStatus as any)[status as number];
     return `Enum:TaskStatus:${name}`;
   }

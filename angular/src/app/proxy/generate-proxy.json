@@ -1046,6 +1046,18 @@
               "parameters": [
                 {
                   "nameOnMethod": "input",
+                  "name": "FilterText",
+                  "jsonName": null,
+                  "type": "System.String",
+                  "typeSimple": "string",
+                  "isOptional": false,
+                  "defaultValue": null,
+                  "constraintTypes": null,
+                  "bindingSourceId": "ModelBinding",
+                  "descriptorName": "input"
+                },
+                {
+                  "nameOnMethod": "input",
                   "name": "Status",
                   "jsonName": null,
                   "type": "TaskManagement.Tasks.TaskStatus?",
@@ -4120,6 +4132,19 @@
       "enumValues": null,
       "genericArguments": null,
       "properties": [
+        {
+          "name": "FilterText",
+          "jsonName": null,
+          "type": "System.String",
+          "typeSimple": "string",
+          "isRequired": false,
+          "minLength": null,
+          "maxLength": null,
+          "minimum": null,
+          "maximum": null,
+          "regex": null,
+          "isNullable": true
+        },
         {
           "name": "Status",
           "jsonName": null,

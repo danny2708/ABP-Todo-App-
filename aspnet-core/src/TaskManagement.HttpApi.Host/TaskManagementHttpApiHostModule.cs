@@ -5,6 +5,7 @@ using System.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Identity; // Thêm namespace này
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -64,12 +65,23 @@ public class TaskManagementHttpApiHostModule : AbpModule
         var hostingEnvironment = context.Services.GetHostingEnvironment();
 
         ConfigureAuthentication(context);
+        ConfigureIdentity(context); // Gọi hàm cấu hình Identity mới tại đây
         ConfigureBundles();
         ConfigureUrls(configuration);
         ConfigureConventionalControllers();
         ConfigureVirtualFileSystem(context);
         ConfigureCors(context, configuration);
         ConfigureSwaggerServices(context, configuration);
+    }
+
+    // Hàm cấu hình cho phép chung Email
+    private void ConfigureIdentity(ServiceConfigurationContext context)
+    {
+        Configure<IdentityOptions>(options =>
+        {
+            // Tắt ràng buộc Email duy nhất để sếp có thể tạo nhiều user dùng chung 1 mail
+            options.User.RequireUniqueEmail = false; 
+        });
     }
 
     private void ConfigureAuthentication(ServiceConfigurationContext context)

@@ -63,9 +63,14 @@ public class TaskManagementDbContext :
 
         builder.Entity<AppTask>(b =>
         {
-            b.ToTable("AppTasks");
-            b.ConfigureByConvention(); 
-            b.Property(x => x.Title).IsRequired().HasMaxLength(128);
+            b.Property(x => x.Title)
+                    .UseCollation("Vietnamese_CI_AI") 
+                    .IsRequired()
+                    .HasMaxLength(256);
+
+                    // Tương tự cho Description
+                    b.Property(x => x.Description)
+                    .UseCollation("Vietnamese_CI_AI");
         });
     }
 }

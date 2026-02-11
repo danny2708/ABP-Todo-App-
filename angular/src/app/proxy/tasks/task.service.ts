@@ -40,7 +40,7 @@ export class TaskService {
     this.restService.request<any, PagedResultDto<TaskDto>>({
       method: 'GET',
       url: '/api/task',
-      params: { status: input.status, assignedUserId: input.assignedUserId, sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
+      params: { filterText: input.filterText, status: input.status, assignedUserId: input.assignedUserId, sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
     },
     { apiName: this.apiName,...config });
   

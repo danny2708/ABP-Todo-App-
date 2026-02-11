@@ -61,7 +61,14 @@
                 (nzPageIndexChange)="onPageChange($event)" nzSize="small">
         <thead>
           <tr>
-            <th class="text-black fw-bold" nzShowSort nzColumnKey="title" (nzSortOrderChange)="onSortChange($event)">Tiêu đề</th>
+            <th class="text-black fw-bold" nzShowSort nzColumnKey="title" (nzSortOrderChange)="onSortChange($event)">
+              Tiêu đề
+              <span class="ms-2 creation-sort-btn" (click)="toggleCreationSort($event)" 
+                    nz-tooltip [nzTooltipTitle]="'Sắp xếp theo thời gian: ' + (isCreationSortDesc ? 'Mới nhất' : 'Cũ nhất')">
+                <i nz-icon [nzType]="isCreationSortDesc ? 'sort-descending' : 'sort-ascending'" 
+                   [class.text-primary]="sorting.includes('CreationTime')"></i>
+              </span>
+            </th>
             <th class="text-black fw-bold" nzShowSort nzColumnKey="status" (nzSortOrderChange)="onSortChange($event)">Trạng thái</th>
             <th class="text-black fw-bold">Người thực hiện</th>
             <th class="text-end text-black fw-bold">Thao tác</th>
