@@ -79,7 +79,7 @@ public class TaskManagementHttpApiHostModule : AbpModule
     {
         Configure<IdentityOptions>(options =>
         {
-            // Tắt ràng buộc Email duy nhất để sếp có thể tạo nhiều user dùng chung 1 mail
+            // Tắt ràng buộc Email duy nhất
             options.User.RequireUniqueEmail = false; 
         });
     }
