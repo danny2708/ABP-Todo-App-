@@ -11,6 +11,14 @@ export class TaskService {
   apiName = 'TaskManagement';
   
 
+  approve = (id: string, config?: Partial<Rest.Config>) =>
+    this.restService.request<any, TaskDto>({
+      method: 'POST',
+      url: `/api/task/${id}/approve`,
+    },
+    { apiName: this.apiName,...config });
+  
+
   create = (input: CreateUpdateTaskDto, config?: Partial<Rest.Config>) =>
     this.restService.request<any, TaskDto>({
       method: 'POST',
@@ -40,7 +48,15 @@ export class TaskService {
     this.restService.request<any, PagedResultDto<TaskDto>>({
       method: 'GET',
       url: '/api/task',
-      params: { filterText: input.filterText, status: input.status, assignedUserId: input.assignedUserId, sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
+      params: { projectId: input.projectId, filterText: input.filterText, status: input.status, assignedUserId: input.assignedUserId, isApproved: input.isApproved, sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
+    },
+    { apiName: this.apiName,...config });
+  
+
+  getOverdueList = (projectId: string, config?: Partial<Rest.Config>) =>
+    this.restService.request<any, PagedResultDto<TaskDto>>({
+      method: 'GET',
+      url: `/api/task/overdue/${projectId}`,
     },
     { apiName: this.apiName,...config });
   

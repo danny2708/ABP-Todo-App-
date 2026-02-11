@@ -7,7 +7,6 @@ using Volo.Abp.AspNetCore.Mvc;
 
 namespace TaskManagement.Tasks
 {
-    
     [RemoteService(Name = "TaskManagement")] 
     [Route("api/task")] 
     public class TaskController : AbpController, ITaskAppService
@@ -23,18 +22,32 @@ namespace TaskManagement.Tasks
         public Task<TaskDto> GetAsync(Guid id) => _taskAppService.GetAsync(id);
 
         [HttpGet]
-        public Task<PagedResultDto<TaskDto>> GetListAsync(GetTasksInput input) => _taskAppService.GetListAsync(input);
+        public Task<PagedResultDto<TaskDto>> GetListAsync(GetTasksInput input) 
+            => _taskAppService.GetListAsync(input);
 
         [HttpPost]
-        public Task<TaskDto> CreateAsync(CreateUpdateTaskDto input) => _taskAppService.CreateAsync(input);
+        public Task<TaskDto> CreateAsync(CreateUpdateTaskDto input) 
+            => _taskAppService.CreateAsync(input);
 
         [HttpPut("{id}")]
-        public Task<TaskDto> UpdateAsync(Guid id, CreateUpdateTaskDto input) => _taskAppService.UpdateAsync(id, input);
+        public Task<TaskDto> UpdateAsync(Guid id, CreateUpdateTaskDto input) 
+            => _taskAppService.UpdateAsync(id, input);
 
         [HttpDelete("{id}")]
         public Task DeleteAsync(Guid id) => _taskAppService.DeleteAsync(id);
 
         [HttpGet("user-lookup")]
-        public Task<ListResultDto<UserLookupDto>> GetUserLookupAsync() => _taskAppService.GetUserLookupAsync();
+        public Task<ListResultDto<UserLookupDto>> GetUserLookupAsync() 
+            => _taskAppService.GetUserLookupAsync();
+
+        // --- BỔ SUNG THEO YÊU CẦU MỚI ---
+
+        [HttpPost("{id}/approve")]
+        public Task<TaskDto> ApproveAsync(Guid id) 
+            => _taskAppService.ApproveAsync(id);
+
+        [HttpGet("overdue/{projectId}")]
+        public Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId) 
+            => _taskAppService.GetOverdueListAsync(projectId);
     }
 }

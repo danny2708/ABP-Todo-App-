@@ -1,0 +1,46 @@
+<div class="p-4 bg-light min-vh-100">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="text-black fw-bold mb-0"><i nz-icon nzType="project" class="me-2"></i> Dự án của tôi</h3>
+    <div class="d-flex gap-3">
+      <nz-input-group [nzPrefix]="prefixIconSearch" style="width: 300px">
+        <input type="text" nz-input [(ngModel)]="filterText" (input)="list.get()" placeholder="Tìm dự án..." />
+      </nz-input-group>
+      <ng-template #prefixIconSearch><i nz-icon nzType="search"></i></ng-template>
+      <button *ngIf="permission.getGrantedPolicy('TaskManagement.Projects.Create')" 
+              nz-button nzType="primary" (click)="createProject()" class="rounded-pill">
+        <i nz-icon nzType="plus"></i> Tạo dự án
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-md-4" *ngFor="let item of projectData.items">
+      <nz-card class="project-card border-0 shadow-sm" (click)="openTasks(item.id)">
+        <div class="project-actions">
+          <button nz-button nzType="text" (click)="editProject($event, item)"><i nz-icon nzType="edit" class="text-primary"></i></button>
+          <button *ngIf="permission.getGrantedPolicy('TaskManagement.Projects.Delete')" 
+                  nz-button nzType="text" (click)="deleteProject($event, item.id)"><i nz-icon nzType="delete" class="text-danger"></i></button>
+        </div>
+
+        <h5 class="text-black fw-bold mb-1">{{ item.name }}</h5>
+        <p class="text-muted small text-truncate mb-3">{{ item.description || 'Chưa có mô tả' }}</p>
+        
+        <div class="d-flex justify-content-between align-items-center mb-1">
+          <span class="text-black x-small fw-bold">TIẾN ĐỘ</span>
+          <span class="text-primary fw-bold small">{{ item.progress | number:'1.0-0' }}%</span>
+        </div>
+        <nz-progress [nzPercent]="item.progress" [nzShowInfo]="false" nzStatus="active" [nzStrokeWidth]="6"></nz-progress>
+
+        <hr class="my-3 opacity-25">
+
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex align-items-center">
+            <nz-avatar nzSize="small" [nzText]="item.projectManagerName?.[0]" class="bg-primary me-2"></nz-avatar>
+            <span class="text-black x-small fw-bold">{{ item.projectManagerName }}</span>
+          </div>
+          <span class="text-muted x-small fst-italic">{{ item.creationTime | date:'dd/MM/yyyy' }}</span>
+        </div>
+      </nz-card>
+    </div>
+  </div>
+</div>

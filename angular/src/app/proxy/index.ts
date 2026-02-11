@@ -1,2 +1,3 @@
+import * as Projects from './projects';
 import * as Tasks from './tasks';
-export { Tasks };
+export { Projects, Tasks };

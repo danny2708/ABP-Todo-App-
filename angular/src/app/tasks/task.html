@@ -1,11 +1,24 @@
 <div class="task-manager-container p-3 bg-white min-vh-100">
   <div class="row g-3 mb-3">
-    <div class="col-md-4" *ngFor="let stat of [{label: 'TOTAL TASKS', count: taskData.totalCount, color: 'text-primary', icon: 'fa-tasks', bg: 'bg-soft-primary'}, {label: 'IN PROGRESS', count: inProgressCount, color: 'text-warning', icon: 'fa-spinner', bg: 'bg-soft-warning'}, {label: 'COMPLETED', count: completedCount, color: 'text-success', icon: 'fa-check-double', bg: 'bg-soft-success'}]">
+    <div class="col-md-3" *ngFor="let stat of [
+      {label: 'TỔNG CÔNG VIỆC', count: taskData.totalCount, color: 'text-primary', icon: 'fa-tasks', bg: 'bg-soft-primary'}, 
+      {label: 'ĐANG XỬ LÝ', count: inProgressCount, color: 'text-warning', icon: 'fa-spinner', bg: 'bg-soft-warning'}, 
+      {label: 'HOÀN THÀNH', count: completedCount, color: 'text-success', icon: 'fa-check-double', bg: 'bg-soft-success'}
+    ]">
       <div class="stat-card py-2 px-3 border shadow-none">
         <div class="stat-icon" [class]="stat.bg"><i class="fas" [class]="stat.icon"></i></div>
         <div class="stat-content">
           <span class="text-black small fw-bold text-uppercase">{{ stat.label }}</span>
           <h4 class="mb-0 fw-bold" [class]="stat.color">{{ stat.count }}</h4>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="stat-card py-2 px-3 border border-danger shadow-none bg-soft-danger cursor-pointer" (click)="isOverdueModalOpen = true">
+        <div class="stat-icon bg-danger text-white"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="stat-content">
+          <span class="text-danger small fw-bold text-uppercase">QUÁ HẠN</span>
+          <h4 class="mb-0 fw-bold text-danger">{{ overdueTasks.length }}</h4>
         </div>
       </div>
     </div>
@@ -26,8 +39,8 @@
           <ng-template #prefixIconSearch><i nz-icon nzType="search" class="text-muted"></i></ng-template>
         </div>
         <div class="col-md-3 text-end">
-          <button *ngIf="hasCreatePermission" nz-button nzType="primary" (click)="createTask()" class="rounded-pill px-3 shadow-none">
-            <i nz-icon nzType="plus"></i> Công việc mới
+          <button nz-button nzType="primary" (click)="createTask()" class="rounded-pill px-3 shadow-none">
+            <i nz-icon nzType="plus"></i> {{ (hasCreatePermission ? 'Công việc mới' : 'Gửi đề xuất') }}
           </button>
         </div>
       </div>
@@ -70,7 +83,8 @@
               </span>
             </th>
             <th class="text-black fw-bold" nzShowSort nzColumnKey="status" (nzSortOrderChange)="onSortChange($event)">Trạng thái</th>
-            <th class="text-black fw-bold">Người thực hiện</th>
+            <th class="text-black fw-bold" nzShowSort nzColumnKey="assignedUserId" (nzSortOrderChange)="onSortChange($event)">Người thực hiện</th>
+            <th class="text-black fw-bold" nzShowSort nzColumnKey="dueDate" (nzSortOrderChange)="onSortChange($event)">Hạn chót</th>
             <th class="text-end text-black fw-bold">Thao tác</th>
           </tr>
         </thead>
@@ -78,7 +92,10 @@
           <tr *ngFor="let task of tasksTable.data" class="task-row">
             <td>
               <div class="d-flex flex-column">
-                <span class="text-black fw-bold mb-0">{{ task.title }}</span>
+                <span class="text-black fw-bold mb-0">
+                  {{ task.title }}
+                  <nz-tag *ngIf="!task.isApproved" nzColor="error" class="ms-2 x-small">ĐỀ XUẤT</nz-tag>
+                </span>
                 <small class="text-dark opacity-75 text-truncate" style="max-width: 200px;">{{ task.description }}</small>
               </div>
             </td>
@@ -96,10 +113,20 @@
                 </span>
               </ng-template>
             </td>
+            <td>
+              <span class="small fw-bold" [class.text-danger]="isOverdue(task.dueDate)">
+                {{ task.dueDate | date:'dd/MM/yyyy HH:mm' }}
+              </span>
+            </td>
             <td class="text-end">
               <div class="row-actions">
+                <button *ngIf="!task.isApproved && hasApprovePermission" nz-button nzType="text" (click)="approveTask(task.id)" nz-tooltip nzTooltipTitle="Phê duyệt">
+                  <i nz-icon nzType="check-circle" class="text-success fs-5"></i>
+                </button>
                 <button nz-button nzType="text" (click)="editTask(task)"><i nz-icon nzType="edit" class="text-primary fs-5"></i></button>
-                <button *ngIf="hasDeletePermission" nz-button nzType="text" nz-popconfirm nzPopconfirmTitle="Xóa?" (nzOnConfirm)="delete(task.id)"><i nz-icon nzType="delete" class="text-danger fs-5"></i></button>
+                <button *ngIf="hasDeletePermission || (task.status === taskStatus.New && task.creatorId === currentUser.id)" nz-button nzType="text" nz-popconfirm nzPopconfirmTitle="Xóa?" (nzOnConfirm)="delete(task.id)">
+                  <i nz-icon nzType="delete" class="text-danger fs-5"></i>
+                </button>
               </div>
             </td>
           </tr>
@@ -141,6 +168,12 @@
           </nz-select>
         </nz-form-control>
       </nz-form-item>
+      <nz-form-item class="mb-2">
+        <nz-form-label class="text-black fw-bold">Hạn chót</nz-form-label>
+        <nz-form-control>
+          <nz-date-picker formControlName="dueDate" nzShowTime nzFormat="yyyy-MM-dd HH:mm" class="w-100"></nz-date-picker>
+        </nz-control>
+      </nz-form-item>
     </form>
   </ng-container>
   <ng-template #drawerFooter>
@@ -150,3 +183,24 @@
     </div>
   </ng-template>
 </nz-drawer>
+
+<nz-modal [(nzVisible)]="isOverdueModalOpen" nzTitle="Danh sách công việc quá hạn" (nzOnCancel)="isOverdueModalOpen = false" [nzFooter]="null" nzWidth="700px">
+  <ng-container *nzModalContent>
+    <nz-table #overdueTable [nzData]="overdueTasks" nzSize="small" [nzFrontPagination]="true">
+      <thead>
+        <tr>
+          <th>Tiêu đề</th>
+          <th>Người thực hiện</th>
+          <th>Hạn chót</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let task of overdueTable.data">
+          <td class="text-danger fw-bold">{{ task.title }}</td>
+          <td>{{ task.assignedUserName || 'Chưa chỉ định' }}</td>
+          <td class="text-danger">{{ task.dueDate | date:'dd/MM/yyyy HH:mm' }}</td>
+        </tr>
+      </tbody>
+    </nz-table>
+  </ng-container>
+</nz-modal>
