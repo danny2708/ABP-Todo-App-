@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Dynamic.Core; // Quan trọng để dùng string sorting
+using System.Linq.Dynamic.Core; 
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using TaskManagement.EntityFrameworkCore;
@@ -19,23 +19,38 @@ namespace TaskManagement.Tasks
             => await (await GetDbSetAsync()).FirstOrDefaultAsync(x => x.Id == id);
 
         public async Task<List<AppTask>> GetListAsync(
-            int skipCount, int maxResultCount, string sorting, 
-            string? filter = null, TaskStatus? status = null, Guid? assignedUserId = null)
+            int skipCount, 
+            int maxResultCount, 
+            string sorting, 
+            Guid? projectId = null, // Update cấu trúc mới
+            string? filter = null, 
+            TaskStatus? status = null, 
+            Guid? assignedUserId = null,
+            bool? isApproved = null) // Update cấu trúc mới
         {
             var dbSet = await GetDbSetAsync();
             return await dbSet
+                .WhereIf(projectId.HasValue, x => x.ProjectId == projectId) // Lọc theo Project
+                .WhereIf(isApproved.HasValue, x => x.IsApproved == isApproved) // Lọc trạng thái phê duyệt
                 .WhereIf(!string.IsNullOrWhiteSpace(filter), x => x.Title.Contains(filter) || x.Description.Contains(filter))
                 .WhereIf(status.HasValue, x => x.Status == status)
                 .WhereIf(assignedUserId.HasValue, x => x.AssignedUserId == assignedUserId)
-                .OrderBy(string.IsNullOrWhiteSpace(sorting) ? "Title asc" : sorting) // Xử lý sắp xếp
+                .OrderBy(string.IsNullOrWhiteSpace(sorting) ? "CreationTime desc" : sorting)
                 .PageBy(skipCount, maxResultCount)
                 .ToListAsync();
         }
 
-        public async Task<long> GetTotalCountAsync(string? filter = null, TaskStatus? status = null, Guid? assignedUserId = null)
+        public async Task<long> GetTotalCountAsync(
+            Guid? projectId = null, // Update cấu trúc mới
+            string? filter = null, 
+            TaskStatus? status = null, 
+            Guid? assignedUserId = null,
+            bool? isApproved = null) // Update cấu trúc mới
         {
             var dbSet = await GetDbSetAsync();
             return await dbSet
+                .WhereIf(projectId.HasValue, x => x.ProjectId == projectId)
+                .WhereIf(isApproved.HasValue, x => x.IsApproved == isApproved)
                 .WhereIf(!string.IsNullOrWhiteSpace(filter), x => x.Title.Contains(filter) || x.Description.Contains(filter))
                 .WhereIf(status.HasValue, x => x.Status == status)
                 .WhereIf(assignedUserId.HasValue, x => x.AssignedUserId == assignedUserId)

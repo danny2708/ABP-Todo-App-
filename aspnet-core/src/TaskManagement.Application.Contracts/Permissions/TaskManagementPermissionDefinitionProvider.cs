@@ -1,5 +1,4 @@
 ﻿using TaskManagement.Localization;
-using TaskManagement.Permissions; 
 using Volo.Abp.Authorization.Permissions;
 using Volo.Abp.Localization;
 
@@ -9,19 +8,29 @@ public class TaskManagementPermissionDefinitionProvider : PermissionDefinitionPr
 {
     public override void Define(IPermissionDefinitionContext context)
     {
-        // 1. Tạo Group (Nếu chưa có)
         var myGroup = context.AddGroup(TaskManagementPermissions.GroupName, L("Permission:TaskManagement"));
 
-        // 2. Đăng ký quyền 'TaskManagement.Tasks' (Quyền cha)
+        // 1. Định nghĩa nhóm quyền DỰ ÁN (Projects)
+        var projectsPermission = myGroup.AddPermission(
+            TaskManagementPermissions.Projects.Default, 
+            L("Permission:Projects"));
+            
+        projectsPermission.AddChild(TaskManagementPermissions.Projects.Create, L("Permission:Projects.Create"));
+        projectsPermission.AddChild(TaskManagementPermissions.Projects.Update, L("Permission:Projects.Update"));
+        projectsPermission.AddChild(TaskManagementPermissions.Projects.Delete, L("Permission:Projects.Delete"));
+
+        // 2. Định nghĩa nhóm quyền CÔNG VIỆC (Tasks)
         var tasksPermission = myGroup.AddPermission(
             TaskManagementPermissions.Tasks.Default, 
             L("Permission:Tasks"));
 
-        // 3. Đăng ký các quyền con (Create, Edit, Delete)
         tasksPermission.AddChild(TaskManagementPermissions.Tasks.Create, L("Permission:Tasks.Create"));
         tasksPermission.AddChild(TaskManagementPermissions.Tasks.Update, L("Permission:Tasks.Update"));
         tasksPermission.AddChild(TaskManagementPermissions.Tasks.Delete, L("Permission:Tasks.Delete"));
         tasksPermission.AddChild(TaskManagementPermissions.Tasks.UpdateStatus, L("Permission:Tasks.UpdateStatus"));
+        
+        // Đăng ký quyền Phê duyệt đề xuất
+        tasksPermission.AddChild(TaskManagementPermissions.Tasks.Approve, L("Permission:Tasks.Approve"));
     }
 
     private static LocalizableString L(string name)

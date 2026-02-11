@@ -14,5 +14,7 @@ namespace TaskManagement.Tasks
         Task<TaskDto> UpdateAsync(Guid id, CreateUpdateTaskDto input);
         Task DeleteAsync(Guid id);
         Task<ListResultDto<UserLookupDto>> GetUserLookupAsync();
+        Task<TaskDto> ApproveAsync(Guid id); // Phê duyệt đề xuất của User
+        Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId);
     }
 }
