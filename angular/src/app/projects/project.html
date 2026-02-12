@@ -1,7 +1,9 @@
-<div class="p-4 bg-white min-vh-100"> <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="p-4 bg-white min-vh-100">
+  <div class="d-flex justify-content-between align-items-center mb-4">
     <h3 class="text-black fw-bold mb-0">
       <i nz-icon nzType="project" class="me-2"></i> 
-      {{ 'TaskManagement::Menu:Projects' | abpLocalization }} </h3>
+      {{ 'TaskManagement::Menu:Projects' | abpLocalization }}
+    </h3>
     
     <div class="d-flex gap-3 align-items-center">
       <nz-input-group [nzPrefix]="prefixIconSearch" [nzSuffix]="sortIcon" style="width: 350px">
@@ -15,7 +17,7 @@
         <i nz-icon [nzType]="isCreationSortDesc ? 'sort-descending' : 'sort-ascending'" 
            class="text-primary cursor-pointer"
            (click)="toggleCreationSort()"
-           nz-tooltip [nzTooltipTitle]="isCreationSortDesc ? 'Mới nhất lên đầu' : 'Cũ nhất lên đầu'">
+           nz-tooltip [nzTooltipTitle]="isCreationSortDesc ? ('TaskManagement::SortNewest' | abpLocalization) : ('TaskManagement::SortOldest' | abpLocalization)">
         </i>
       </ng-template>
 
@@ -59,7 +61,7 @@
   <ng-template #loadingTpl><div class="text-center p-5"><nz-spin nzSimple></nz-spin></div></ng-template>
 </div>
 
-<nz-drawer [(nzVisible)]="isModalOpen" [nzTitle]="drawerTitle" [nzWidth]="450" nzPlacement="right" 
+<nz-drawer [nzVisible]="isModalOpen" [nzTitle]="drawerTitle" [nzWidth]="450" nzPlacement="right" 
            (nzOnClose)="handleCancel()" [nzFooter]="drawerFooter">
   <ng-template #drawerTitle>
     <span class="fw-bold text-black"><i nz-icon nzType="form" class="text-primary me-2"></i> 
@@ -91,7 +93,7 @@
       <nz-form-item>
         <nz-form-label>{{ 'TaskManagement::Members' | abpLocalization }}</nz-form-label>
         <nz-form-control>
-          <nz-select formControlName="memberIds" nzMode="multiple" [nzPlaceHolder]="'TaskManagement::SelectUser' | abpLocalization">
+          <nz-select formControlName="memberIds" nzMode="multiple" nzShowSearch [nzPlaceHolder]="'TaskManagement::SelectUser' | abpLocalization">
             <nz-option *ngFor="let u of users" [nzLabel]="u.userName" [nzValue]="u.id"></nz-option>
           </nz-select>
         </nz-form-control>

@@ -10,6 +10,8 @@ using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
 using System.Linq.Dynamic.Core;
+using Microsoft.EntityFrameworkCore; 
+using TaskManagement.Tasks;
 
 namespace TaskManagement.Projects;
 
@@ -120,5 +122,22 @@ public class ProjectAppService : ApplicationService, IProjectAppService
     public async Task DeleteAsync(Guid id)
     {
         await _projectRepository.DeleteAsync(id);
+    }
+
+    // Tìm kiếm nhân viên tham gia dự án    
+    public async Task<ListResultDto<UserLookupDto>> GetMembersLookupAsync(Guid projectId)
+    {
+        var project = await _projectRepository.WithDetailsAsync(p => p.Members).Result.FirstOrDefaultAsync(p => p.Id == projectId);
+        if (project == null) throw new UserFriendlyException("Dự án không tồn tại.");
+
+        // Lấy ID của PM và tất cả Members
+        var memberIds = project.Members.Select(m => m.UserId).ToList();
+        memberIds.Add(project.ProjectManagerId); 
+
+        var users = await _userRepository.GetListAsync(u => memberIds.Contains(u.Id));
+        
+        return new ListResultDto<UserLookupDto>(
+            users.Select(u => new UserLookupDto { Id = u.Id, UserName = u.UserName }).ToList()
+        );
     }
 }

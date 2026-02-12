@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Mvc;
+using TaskManagement.Tasks;
 
 namespace TaskManagement.Projects
 {
@@ -24,6 +25,10 @@ namespace TaskManagement.Projects
         [HttpGet]
         public Task<PagedResultDto<ProjectDto>> GetListAsync(PagedAndSortedResultRequestDto input) 
             => _projectAppService.GetListAsync(input);
+
+        [HttpGet("{projectId}/members-lookup")]
+        public Task<ListResultDto<UserLookupDto>> GetMembersLookupAsync(Guid projectId) 
+            => _projectAppService.GetMembersLookupAsync(projectId);
 
         [HttpPost]
         public Task<ProjectDto> CreateAsync(CreateUpdateProjectDto input) 

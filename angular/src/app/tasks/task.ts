@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
@@ -18,8 +18,12 @@ import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 
-import { TaskService, TaskDto, TaskStatus, UserLookupDto } from 'src/app/proxy/tasks';
+// SỬA: Import trực tiếp
+import { TaskService } from '../proxy/tasks/task.service';
+import { TaskDto, TaskStatus, UserLookupDto } from '../proxy/tasks/models';
+import { ProjectService } from '../proxy/projects/project.service';
 import { OAuthService } from 'angular-oauth2-oidc';
 import { Router, ActivatedRoute } from '@angular/router';
 
@@ -33,16 +37,31 @@ import { Router, ActivatedRoute } from '@angular/router';
     CommonModule, FormsModule, ReactiveFormsModule, CoreModule, ThemeSharedModule,
     NzDrawerModule, NzTableModule, NzTagModule, NzButtonModule, NzIconModule,
     NzModalModule, NzFormModule, NzInputModule, NzSelectModule, NzPopconfirmModule,
-    NzToolTipModule, NzAvatarModule, NzDatePickerModule
+    NzToolTipModule, NzAvatarModule, NzDatePickerModule, NzSpinModule
   ],
 })
 export class TaskComponent implements OnInit {
+  // Inject services
+  public readonly list = inject(ListService);
+  private taskService = inject(TaskService);
+  private projectService = inject(ProjectService);
+  private fb = inject(FormBuilder);
+  private message = inject(NzMessageService);
+  private confirmation = inject(ConfirmationService);
+  private modal = inject(NzModalService);
+  private oauthService = inject(OAuthService);
+  private router = inject(Router);
+  private route = inject(ActivatedRoute);
+  private permissionService = inject(PermissionService);
+  private configState = inject(ConfigStateService);
+
   taskData: PagedResultDto<TaskDto> = { items: [], totalCount: 0 };
   overdueTasks: TaskDto[] = [];
   users: UserLookupDto[] = [];
   taskStatus = TaskStatus;
   currentUser: CurrentUserDto;
   projectId: string;
+  projectName: string = '';
 
   filterText = '';
   sorting = 'CreationTime DESC';
@@ -69,20 +88,6 @@ export class TaskComponent implements OnInit {
 
   form!: FormGroup;
 
-  constructor(
-    public readonly list: ListService,
-    private readonly taskService: TaskService,
-    private readonly fb: FormBuilder,
-    private readonly message: NzMessageService,
-    private readonly confirmation: ConfirmationService,
-    private readonly modal: NzModalService,
-    private readonly oauthService: OAuthService,
-    private readonly router: Router,
-    private readonly route: ActivatedRoute,
-    private readonly permissionService: PermissionService,
-    private readonly configState: ConfigStateService 
-  ) {}
-
   ngOnInit(): void {
     if (!this.isAuthenticated()) {
       this.showLoginRequiredModal();
@@ -102,6 +107,7 @@ export class TaskComponent implements OnInit {
     this.hasApprovePermission = this.permissionService.getGrantedPolicy('TaskManagement.Tasks.Approve');
 
     this.buildForm();
+    this.loadProjectInfo();
     this.loadUsers();
     this.loadTasks();
     this.loadOverdueTasks();
@@ -126,8 +132,14 @@ export class TaskComponent implements OnInit {
     });
   }
 
+  private loadProjectInfo(): void {
+    this.projectService.get(this.projectId).subscribe(res => {
+      this.projectName = res.name;
+    });
+  }
+
   private loadUsers(): void {
-    this.taskService.getUserLookup().subscribe(res => {
+    this.projectService.getMembersLookup(this.projectId).subscribe(res => {
       this.users = res.items;
     });
   }

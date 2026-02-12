@@ -1,7 +1,8 @@
 import type { CreateUpdateProjectDto, ProjectDto } from './models';
 import { RestService, Rest } from '@abp/ng.core';
-import type { PagedAndSortedResultRequestDto, PagedResultDto } from '@abp/ng.core';
+import type { ListResultDto, PagedAndSortedResultRequestDto, PagedResultDto } from '@abp/ng.core';
 import { Injectable, inject } from '@angular/core';
+import type { UserLookupDto } from '../tasks/models';
 
 @Injectable({
   providedIn: 'root',
@@ -41,6 +42,14 @@ export class ProjectService {
       method: 'GET',
       url: '/api/project',
       params: { sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
+    },
+    { apiName: this.apiName,...config });
+  
+
+  getMembersLookup = (projectId: string, config?: Partial<Rest.Config>) =>
+    this.restService.request<any, ListResultDto<UserLookupDto>>({
+      method: 'GET',
+      url: `/api/project/${projectId}/members-lookup`,
     },
     { apiName: this.apiName,...config });
   

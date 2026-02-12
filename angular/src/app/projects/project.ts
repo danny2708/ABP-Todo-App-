@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core'; // Thêm inject
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ListService, PagedResultDto, CoreModule, PermissionService } from '@abp/ng.core';
@@ -11,14 +11,17 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzDrawerModule } from 'ng-zorro-antd/drawer'; // Thêm Drawer
+import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
+import { NzSpinModule } from 'ng-zorro-antd/spin';
 
-import { ProjectService, ProjectDto } from 'src/app/proxy/projects';
-import { TaskService } from 'src/app/proxy/tasks';
+// SỬA: Import trực tiếp từ file service để tránh lỗi "No value"
+import { ProjectService } from '../proxy/projects/project.service';
+import { ProjectDto } from '../proxy/projects/models';
+import { TaskService } from '../proxy/tasks/task.service';
 
 @Component({
   selector: 'app-project',
@@ -29,10 +32,19 @@ import { TaskService } from 'src/app/proxy/tasks';
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, CoreModule, ThemeSharedModule,
     NzCardModule, NzProgressModule, NzButtonModule, NzIconModule, NzAvatarModule,
-    NzInputModule, NzDrawerModule, NzFormModule, NzSelectModule, NzToolTipModule
+    NzInputModule, NzDrawerModule, NzFormModule, NzSelectModule, NzToolTipModule, NzSpinModule
   ],
 })
 export class ProjectComponent implements OnInit {
+  // Inject services theo cách mới
+  public readonly list = inject(ListService);
+  private projectService = inject(ProjectService);
+  private taskService = inject(TaskService);
+  private fb = inject(FormBuilder);
+  private router = inject(Router);
+  private message = inject(NzMessageService);
+  public permission = inject(PermissionService);
+
   projectData: PagedResultDto<ProjectDto> = { items: [], totalCount: 0 };
   users: any[] = [];
   loading = false;
@@ -42,19 +54,8 @@ export class ProjectComponent implements OnInit {
   form!: FormGroup;
   filterText = '';
   
-  // Logic sắp xếp
   sorting = 'CreationTime DESC';
   isCreationSortDesc = true;
-
-  constructor(
-    public readonly list: ListService,
-    private projectService: ProjectService,
-    private taskService: TaskService,
-    private fb: FormBuilder,
-    private router: Router,
-    private message: NzMessageService,
-    public permission: PermissionService
-  ) {}
 
   ngOnInit(): void {
     this.buildForm();
@@ -68,7 +69,7 @@ export class ProjectComponent implements OnInit {
       return this.projectService.getList({ 
         ...query, 
         filterText: this.filterText,
-        sorting: this.sorting // Gửi kèm logic sắp xếp lên BE
+        sorting: this.sorting 
       });
     };
 
@@ -78,7 +79,6 @@ export class ProjectComponent implements OnInit {
     });
   }
 
-  // Toggle sắp xếp tăng/giảm dần
   toggleCreationSort(): void {
     this.isCreationSortDesc = !this.isCreationSortDesc;
     this.sorting = `CreationTime ${this.isCreationSortDesc ? 'DESC' : 'ASC'}`;
@@ -106,7 +106,7 @@ export class ProjectComponent implements OnInit {
   createProject(): void {
     this.isEditMode = false;
     this.form.reset({ memberIds: [] });
-    this.isModalOpen = true; // Kích hoạt Drawer
+    this.isModalOpen = true;
   }
 
   editProject(event: Event, project: ProjectDto): void {
