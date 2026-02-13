@@ -12,15 +12,17 @@ function configureRoutes() {
   routes.add([
     {
       path: '/',
-      name: '::Menu:Home',
+      // SỬA: Thêm tên Resource 'TaskManagement' vào trước dấu ::
+      name: 'TaskManagement::Menu:Home', 
       iconClass: 'fas fa-home',
       order: 1,
       layout: eLayoutType.application,
     },
     {
       path: '/tasks',
-      name: '::Menu:Tasks',
-      iconClass: 'fas fa-check-square',
+      // SỬA: Tương tự cho nút Tasks
+      name: 'TaskManagement::Menu:Tasks', 
+      iconClass: 'fas fa-tasks',
       order: 2,
       layout: eLayoutType.application,
       requiredPolicy: 'TaskManagement.Tasks',

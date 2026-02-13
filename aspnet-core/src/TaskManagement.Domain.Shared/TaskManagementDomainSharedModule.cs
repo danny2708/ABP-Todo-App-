@@ -50,6 +50,7 @@ public class TaskManagementDomainSharedModule : AbpModule
             options.Languages.Clear();
             options.Languages.Add(new LanguageInfo("en", "en", "English"));
             options.Languages.Add(new LanguageInfo("vi", "vi", "Tiếng Việt"));
+            options.DefaultResourceType = typeof(TaskManagementResource);
         });
 
         Configure<AbpExceptionLocalizationOptions>(options =>

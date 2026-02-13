@@ -1,6 +1,6 @@
-import type { CreateUpdateProjectDto, ProjectDto } from './models';
+import type { CreateUpdateProjectDto, GetProjectsInput, ProjectDto } from './models';
 import { RestService, Rest } from '@abp/ng.core';
-import type { ListResultDto, PagedAndSortedResultRequestDto, PagedResultDto } from '@abp/ng.core';
+import type { ListResultDto, PagedResultDto } from '@abp/ng.core';
 import { Injectable, inject } from '@angular/core';
 import type { UserLookupDto } from '../tasks/models';
 
@@ -37,11 +37,11 @@ export class ProjectService {
     { apiName: this.apiName,...config });
   
 
-  getList = (input: PagedAndSortedResultRequestDto, config?: Partial<Rest.Config>) =>
+  getList = (input: GetProjectsInput, config?: Partial<Rest.Config>) =>
     this.restService.request<any, PagedResultDto<ProjectDto>>({
       method: 'GET',
       url: '/api/project',
-      params: { sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
+      params: { filterText: input.filterText, sorting: input.sorting, skipCount: input.skipCount, maxResultCount: input.maxResultCount },
     },
     { apiName: this.apiName,...config });
   
@@ -49,7 +49,15 @@ export class ProjectService {
   getMembersLookup = (projectId: string, config?: Partial<Rest.Config>) =>
     this.restService.request<any, ListResultDto<UserLookupDto>>({
       method: 'GET',
-      url: `/api/project/${projectId}/members-lookup`,
+      url: `/api/project/members/${projectId}`,
+    },
+    { apiName: this.apiName,...config });
+  
+
+  getProjectManagersLookup = (config?: Partial<Rest.Config>) =>
+    this.restService.request<any, ListResultDto<UserLookupDto>>({
+      method: 'GET',
+      url: '/api/project/project-managers-lookup',
     },
     { apiName: this.apiName,...config });
   

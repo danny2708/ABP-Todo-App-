@@ -31,6 +31,7 @@ public class TaskManagementPermissionDefinitionProvider : PermissionDefinitionPr
         
         // Đăng ký quyền Phê duyệt đề xuất
         tasksPermission.AddChild(TaskManagementPermissions.Tasks.Approve, L("Permission:Tasks.Approve"));
+        tasksPermission.AddChild(TaskManagementPermissions.Tasks.Denied, L("Permission:Tasks.Denied"));
     }
 
     private static LocalizableString L(string name)

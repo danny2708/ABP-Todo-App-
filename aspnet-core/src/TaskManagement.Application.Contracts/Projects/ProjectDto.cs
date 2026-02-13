@@ -1,17 +1,20 @@
 using System;
-using Volo.Abp.Application.Dtos;
 using System.Collections.Generic;
+using Volo.Abp.Application.Dtos;
 
-namespace TaskManagement.Projects;
-
-public class ProjectDto : AuditedEntityDto<Guid>
+namespace TaskManagement.Projects
 {
-    public string Name { get; set; } = default!;
-    public string Description { get; set; }
-    public Guid ProjectManagerId { get; set; }
-    public string ProjectManagerName { get; set; } // Hiển thị tên quản lý
-    public float Progress { get; set; } // % Tiến độ dự án
-    public int TaskCount { get; set; } // Tổng số task
-    public int CompletedTaskCount { get; set; } // Số task đã xong
-    public List<Guid> MemberIds { get; set; } = new List<Guid>(); // Danh sách ID thành viên
+    public class ProjectDto : AuditedEntityDto<Guid>
+    {
+        public string Name { get; set; }
+        public string? Description { get; set; }
+        public Guid ProjectManagerId { get; set; }
+        public string? ProjectManagerName { get; set; }
+        public int TaskCount { get; set; }
+        public int CompletedTaskCount { get; set; }
+        public float Progress { get; set; }
+
+        // MỚI: Danh sách ID để tick chọn thành viên
+        public List<Guid> MemberIds { get; set; } = new();
+    }
 }

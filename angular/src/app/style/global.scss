@@ -1,61 +1,56 @@
-/* Giao diện Siêu gọn & Chữ Đen Tuyệt đối */
+/* angular\src\app\style\global.scss */
 
-// 1. Ép Chữ Đen
+// ÉP NỀN TRẮNG TOÀN DỰ ÁN
+body, .task-page-container {
+  background-color: #fff !important;
+}
+
+.rounded-16 {
+  border-radius: 16px !important;
+}
+
+// Chữ đen tuyệt đối
 .text-black, .text-dark, .form-label, td, span, label, th, input, .ant-select-selection-item {
   color: #000 !important;
   opacity: 1 !important;
 }
 
-.x-small { font-size: 0.7rem !important; }
+.x-small { font-size: 0.7rem !important; letter-spacing: 0.3px; }
 
-// 2. Project Cards Style
-.project-card {
-  transition: all 0.3s ease;
-  border-radius: 12px;
+// Stat Box Modern (Trắng tinh khiết)
+.stat-card-modern {
+  background: #fff;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow: hidden;
-
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important;
-    
-    .project-actions { opacity: 1; }
+  
+  .icon-shape {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 12px;
   }
 }
 
-.project-actions {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  background: rgba(255,255,255,0.9);
-  border-radius: 20px;
-  padding: 2px 8px;
-}
-
-// 3. Khôi phục Tính năng Ẩn nút Thao tác cho Table
-.row-actions {
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.task-row:hover {
-  background-color: #f5faff !important;
-  .row-actions { opacity: 1; }
-}
-
-// 4. Stat Card & Progress
-.progress-container {
-  height: 6px;
-  background: #eee;
-  border-radius: 3px;
-  .progress-bar { height: 100%; border-radius: 3px; }
+// Action Card Hover
+.action-card {
+  &:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08) !important;
+    border-color: transparent !important;
+  }
 }
 
 .bg-soft-primary { background: #e6f7ff; color: #1890ff; }
 .bg-soft-warning { background: #fff7e6; color: #fa8c16; }
 .bg-soft-success { background: #f6ffed; color: #52c41a; }
-.bg-soft-danger { background: #fff1f0; color: #f5222d; }
+
+.shadow-danger { box-shadow: 0 4px 12px rgba(245, 34, 45, 0.2); }
+.shadow-info { box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2); }
+
+.banner-clean {
+  border-left: 6px solid #1890ff !important;
+}

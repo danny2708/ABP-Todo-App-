@@ -907,9 +907,9 @@
                   "parametersOnMethod": [
                     {
                       "name": "input",
-                      "typeAsString": "Volo.Abp.Application.Dtos.PagedAndSortedResultRequestDto, Volo.Abp.Ddd.Application.Contracts",
-                      "type": "Volo.Abp.Application.Dtos.PagedAndSortedResultRequestDto",
-                      "typeSimple": "Volo.Abp.Application.Dtos.PagedAndSortedResultRequestDto",
+                      "typeAsString": "TaskManagement.Projects.GetProjectsInput, TaskManagement.Application.Contracts",
+                      "type": "TaskManagement.Projects.GetProjectsInput",
+                      "typeSimple": "TaskManagement.Projects.GetProjectsInput",
                       "isOptional": false,
                       "defaultValue": null
                     }
@@ -994,6 +994,14 @@
                     "type": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>",
                     "typeSimple": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>"
                   }
+                },
+                {
+                  "name": "GetProjectManagersLookupAsync",
+                  "parametersOnMethod": [],
+                  "returnValue": {
+                    "type": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>",
+                    "typeSimple": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>"
+                  }
                 }
               ]
             }
@@ -1045,14 +1053,26 @@
               "parametersOnMethod": [
                 {
                   "name": "input",
-                  "typeAsString": "Volo.Abp.Application.Dtos.PagedAndSortedResultRequestDto, Volo.Abp.Ddd.Application.Contracts",
-                  "type": "Volo.Abp.Application.Dtos.PagedAndSortedResultRequestDto",
-                  "typeSimple": "Volo.Abp.Application.Dtos.PagedAndSortedResultRequestDto",
+                  "typeAsString": "TaskManagement.Projects.GetProjectsInput, TaskManagement.Application.Contracts",
+                  "type": "TaskManagement.Projects.GetProjectsInput",
+                  "typeSimple": "TaskManagement.Projects.GetProjectsInput",
                   "isOptional": false,
                   "defaultValue": null
                 }
               ],
               "parameters": [
+                {
+                  "nameOnMethod": "input",
+                  "name": "FilterText",
+                  "jsonName": null,
+                  "type": "System.String",
+                  "typeSimple": "string",
+                  "isOptional": false,
+                  "defaultValue": null,
+                  "constraintTypes": null,
+                  "bindingSourceId": "ModelBinding",
+                  "descriptorName": "input"
+                },
                 {
                   "nameOnMethod": "input",
                   "name": "Sorting",
@@ -1093,43 +1113,6 @@
               "returnValue": {
                 "type": "Volo.Abp.Application.Dtos.PagedResultDto<TaskManagement.Projects.ProjectDto>",
                 "typeSimple": "Volo.Abp.Application.Dtos.PagedResultDto<TaskManagement.Projects.ProjectDto>"
-              },
-              "allowAnonymous": null,
-              "implementFrom": "TaskManagement.Projects.IProjectAppService"
-            },
-            "GetMembersLookupAsyncByProjectId": {
-              "uniqueName": "GetMembersLookupAsyncByProjectId",
-              "name": "GetMembersLookupAsync",
-              "httpMethod": "GET",
-              "url": "api/project/{projectId}/members-lookup",
-              "supportedVersions": [],
-              "parametersOnMethod": [
-                {
-                  "name": "projectId",
-                  "typeAsString": "System.Guid, System.Private.CoreLib",
-                  "type": "System.Guid",
-                  "typeSimple": "string",
-                  "isOptional": false,
-                  "defaultValue": null
-                }
-              ],
-              "parameters": [
-                {
-                  "nameOnMethod": "projectId",
-                  "name": "projectId",
-                  "jsonName": null,
-                  "type": "System.Guid",
-                  "typeSimple": "string",
-                  "isOptional": false,
-                  "defaultValue": null,
-                  "constraintTypes": [],
-                  "bindingSourceId": "Path",
-                  "descriptorName": ""
-                }
-              ],
-              "returnValue": {
-                "type": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>",
-                "typeSimple": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>"
               },
               "allowAnonymous": null,
               "implementFrom": "TaskManagement.Projects.IProjectAppService"
@@ -1261,6 +1244,58 @@
               "returnValue": {
                 "type": "System.Void",
                 "typeSimple": "System.Void"
+              },
+              "allowAnonymous": null,
+              "implementFrom": "TaskManagement.Projects.IProjectAppService"
+            },
+            "GetMembersLookupAsyncByProjectId": {
+              "uniqueName": "GetMembersLookupAsyncByProjectId",
+              "name": "GetMembersLookupAsync",
+              "httpMethod": "GET",
+              "url": "api/project/members/{projectId}",
+              "supportedVersions": [],
+              "parametersOnMethod": [
+                {
+                  "name": "projectId",
+                  "typeAsString": "System.Guid, System.Private.CoreLib",
+                  "type": "System.Guid",
+                  "typeSimple": "string",
+                  "isOptional": false,
+                  "defaultValue": null
+                }
+              ],
+              "parameters": [
+                {
+                  "nameOnMethod": "projectId",
+                  "name": "projectId",
+                  "jsonName": null,
+                  "type": "System.Guid",
+                  "typeSimple": "string",
+                  "isOptional": false,
+                  "defaultValue": null,
+                  "constraintTypes": [],
+                  "bindingSourceId": "Path",
+                  "descriptorName": ""
+                }
+              ],
+              "returnValue": {
+                "type": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>",
+                "typeSimple": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>"
+              },
+              "allowAnonymous": null,
+              "implementFrom": "TaskManagement.Projects.IProjectAppService"
+            },
+            "GetProjectManagersLookupAsync": {
+              "uniqueName": "GetProjectManagersLookupAsync",
+              "name": "GetProjectManagersLookupAsync",
+              "httpMethod": "GET",
+              "url": "api/project/project-managers-lookup",
+              "supportedVersions": [],
+              "parametersOnMethod": [],
+              "parameters": [],
+              "returnValue": {
+                "type": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>",
+                "typeSimple": "Volo.Abp.Application.Dtos.ListResultDto<TaskManagement.Tasks.UserLookupDto>"
               },
               "allowAnonymous": null,
               "implementFrom": "TaskManagement.Projects.IProjectAppService"
@@ -4684,9 +4719,9 @@
           "jsonName": null,
           "type": "System.String",
           "typeSimple": "string",
-          "isRequired": true,
-          "minLength": 0,
-          "maxLength": 128,
+          "isRequired": false,
+          "minLength": null,
+          "maxLength": null,
           "minimum": null,
           "maximum": null,
           "regex": null,
@@ -4703,14 +4738,14 @@
           "minimum": null,
           "maximum": null,
           "regex": null,
-          "isNullable": false
+          "isNullable": true
         },
         {
           "name": "ProjectManagerId",
           "jsonName": null,
           "type": "System.Guid",
           "typeSimple": "string",
-          "isRequired": true,
+          "isRequired": false,
           "minLength": null,
           "maxLength": null,
           "minimum": null,
@@ -4730,6 +4765,28 @@
           "maximum": null,
           "regex": null,
           "isNullable": false
+        }
+      ]
+    },
+    "TaskManagement.Projects.GetProjectsInput": {
+      "baseType": "Volo.Abp.Application.Dtos.PagedAndSortedResultRequestDto",
+      "isEnum": false,
+      "enumNames": null,
+      "enumValues": null,
+      "genericArguments": null,
+      "properties": [
+        {
+          "name": "FilterText",
+          "jsonName": null,
+          "type": "System.String",
+          "typeSimple": "string",
+          "isRequired": false,
+          "minLength": null,
+          "maxLength": null,
+          "minimum": null,
+          "maximum": null,
+          "regex": null,
+          "isNullable": true
         }
       ]
     },
@@ -4764,7 +4821,7 @@
           "minimum": null,
           "maximum": null,
           "regex": null,
-          "isNullable": false
+          "isNullable": true
         },
         {
           "name": "ProjectManagerId",
@@ -4790,20 +4847,7 @@
           "minimum": null,
           "maximum": null,
           "regex": null,
-          "isNullable": false
-        },
-        {
-          "name": "Progress",
-          "jsonName": null,
-          "type": "System.Single",
-          "typeSimple": "number",
-          "isRequired": false,
-          "minLength": null,
-          "maxLength": null,
-          "minimum": null,
-          "maximum": null,
-          "regex": null,
-          "isNullable": false
+          "isNullable": true
         },
         {
           "name": "TaskCount",
@@ -4822,6 +4866,19 @@
           "name": "CompletedTaskCount",
           "jsonName": null,
           "type": "System.Int32",
+          "typeSimple": "number",
+          "isRequired": false,
+          "minLength": null,
+          "maxLength": null,
+          "minimum": null,
+          "maximum": null,
+          "regex": null,
+          "isNullable": false
+        },
+        {
+          "name": "Progress",
+          "jsonName": null,
+          "type": "System.Single",
           "typeSimple": "number",
           "isRequired": false,
           "minLength": null,

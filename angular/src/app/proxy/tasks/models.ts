@@ -1,5 +1,6 @@
 import type { TaskStatus } from './task-status.enum';
 import type { AuditedEntityDto, EntityDto, PagedAndSortedResultRequestDto } from '@abp/ng.core';
+export * from './task-status.enum';
 
 export interface CreateUpdateTaskDto {
   projectId?: string;

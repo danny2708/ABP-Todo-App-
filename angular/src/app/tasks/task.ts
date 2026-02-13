@@ -1,9 +1,10 @@
+// angular\src\app\tasks\task.ts
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
 import { ListService, PagedResultDto, CoreModule, PermissionService, ConfigStateService, CurrentUserDto } from '@abp/ng.core';
-import { ThemeSharedModule, ConfirmationService, Confirmation } from '@abp/ng.theme.shared';
+import { ThemeSharedModule } from '@abp/ng.theme.shared';
 
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -13,12 +14,13 @@ import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzPopconfirmModule } from 'ng-zorro-antd/popconfirm';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzAvatarModule } from 'ng-zorro-antd/avatar';
 import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
+import { NzDividerModule } from 'ng-zorro-antd/divider';
+import { NzProgressModule } from 'ng-zorro-antd/progress';
 
 import { TaskService } from '../proxy/tasks/task.service';
 import { TaskDto, TaskStatus, UserLookupDto } from '../proxy/tasks/models';
@@ -34,8 +36,8 @@ import { Router, ActivatedRoute } from '@angular/router';
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule, CoreModule, ThemeSharedModule,
     NzDrawerModule, NzTableModule, NzTagModule, NzButtonModule, NzIconModule,
-    NzModalModule, NzFormModule, NzInputModule, NzSelectModule, NzPopconfirmModule,
-    NzToolTipModule, NzAvatarModule, NzDatePickerModule, NzSpinModule
+    NzModalModule, NzFormModule, NzInputModule, NzSelectModule, NzProgressModule,
+    NzToolTipModule, NzAvatarModule, NzDatePickerModule, NzSpinModule, NzDividerModule
   ],
 })
 export class TaskComponent implements OnInit {
@@ -44,7 +46,6 @@ export class TaskComponent implements OnInit {
   private projectService = inject(ProjectService);
   private fb = inject(FormBuilder);
   private message = inject(NzMessageService);
-  private modal = inject(NzModalService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private permissionService = inject(PermissionService);
@@ -58,6 +59,7 @@ export class TaskComponent implements OnInit {
   currentUser: CurrentUserDto;
   projectId: string;
   projectName: string = '';
+  projectProgress: number = 0;
 
   loading = false;
   saving = false;
@@ -65,7 +67,7 @@ export class TaskComponent implements OnInit {
   isEditMode = false;
   isOverdueModalOpen = false;
   isPendingModalOpen = false;
-  isReasonModalOpen = false;
+  isReasonModalOpen = false; 
   
   selectedTaskId: string | null = null;
   deletionReason: string = '';
@@ -102,7 +104,13 @@ export class TaskComponent implements OnInit {
   goBack(): void { this.router.navigate(['/tasks']); }
 
   private loadProjectInfo(): void {
-    this.projectService.get(this.projectId).subscribe(res => this.projectName = res.name);
+    this.projectService.get(this.projectId).subscribe(res => {
+        this.projectName = res.name;
+        // FIX: Xử lý cả trường hợp trả về decimal (0.2) và số nguyên (20)
+        this.projectProgress = res.progress > 0 && res.progress <= 1 
+            ? Math.round(res.progress * 100) 
+            : Math.round(res.progress || 0);
+    });
   }
 
   private loadUsers(): void {
@@ -125,6 +133,16 @@ export class TaskComponent implements OnInit {
       this.calculateStats();
       this.loading = false;
     });
+  }
+
+  // Khôi phục logic sắp xếp server-side
+  onSort(sort: { key: string; value: string | null }): void {
+    if (sort.value) {
+      this.sorting = `${sort.key} ${sort.value === 'descend' ? 'DESC' : 'ASC'}`;
+    } else {
+      this.sorting = 'CreationTime DESC';
+    }
+    this.list.get();
   }
 
   loadOverdueTasks(): void { this.taskService.getOverdueList(this.projectId).subscribe(res => this.overdueTasks = res.items); }
@@ -158,7 +176,7 @@ export class TaskComponent implements OnInit {
       title: ['', [Validators.required, Validators.maxLength(256)]],
       description: [null],
       status: [TaskStatus.New, Validators.required],
-      assignedUserIds: [[]], // Giao cho nhiều người
+      assignedUserIds: [[]],
       dueDate: [null],
       isApproved: [true]
     });
@@ -173,23 +191,37 @@ export class TaskComponent implements OnInit {
   }
 
   editTask(task: TaskDto): void {
+    this.isPendingModalOpen = false;
+    this.isOverdueModalOpen = false;
     this.isEditMode = true;
     this.selectedTaskId = task.id;
-    this.form.patchValue(task);
+    this.form.patchValue({ ...task, assignedUserIds: task.assignedUserIds || [] });
     
-    // Logic khóa form dựa trên trạng thái
     if (task.status === TaskStatus.Completed && !this.hasApprovePermission) {
         this.form.disable();
     } else if (!task.isApproved) {
         this.form.enable();
-        this.form.get('status')?.disable(); // Không cho tự duyệt đề xuất
+        this.form.get('status')?.disable();
     } else {
         this.form.enable();
     }
     this.isModalOpen = true;
   }
 
+  canDeleteTask(task: TaskDto): boolean {
+    if (this.hasApprovePermission) return task.status !== TaskStatus.Completed; 
+    return !task.isApproved && task.creatorId === this.currentUser.id;
+  }
+
   confirmDelete(id: string): void {
+    const task = this.taskData.items.find(t => t.id === id) || this.pendingTasks.find(t => t.id === id);
+    if (!task) return;
+
+    if (!this.canDeleteTask(task)) {
+        this.message.error(this.l('TaskManagement::NoPermissionToDeleteApprovedTask'));
+        return;
+    }
+
     this.selectedTaskId = id;
     this.deletionReason = '';
     this.isReasonModalOpen = true;
@@ -204,6 +236,7 @@ export class TaskComponent implements OnInit {
         this.message.success(this.l('TaskManagement::DeletedSuccess'));
         this.isReasonModalOpen = false;
         this.refreshData();
+        this.isPendingModalOpen = false;    
     });
   }
 

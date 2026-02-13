@@ -24,5 +24,6 @@ public static class TaskManagementPermissions
         
         // QUAN TRỌNG: Quyền phê duyệt đề xuất từ User
         public const string Approve = Default + ".Approve"; 
+        public const string Denied = Default + ".Denied"; 
     }
 }

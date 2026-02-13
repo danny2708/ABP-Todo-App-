@@ -25,6 +25,11 @@
     "Enum:TaskStatus.2": "Completed",
     "Enum:TaskStatus:New": "New",
     "Enum:TaskStatus:InProgress": "In Progress",
-    "Enum:TaskStatus:Completed": "Completed"
+    "Enum:TaskStatus:Completed": "Completed",
+    "Menu:Projects": "Projects",
+    "TOTAL_TASKS": "TOTAL TASKS",
+    "IN_PROGRESS": "IN PROGRESS",
+    "OVERDUE_TASKS": "OVERDUE TASKS",
+    "PENDING_APPROVAL": "PENDING APPROVAL"
   }
 }

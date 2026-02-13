@@ -39,9 +39,15 @@ namespace TaskManagement.Tasks
             
             if (task == null) throw new UserFriendlyException(L["TaskManagement::TaskNotFound"]);
 
+            var canView = await CanViewTask(task);
+            if (!canView) throw new UserFriendlyException(L["TaskManagement::NoPermission"]);
+
             var dto = ObjectMapper.Map<AppTask, TaskDto>(task);
+            
             var assignedUserIds = task.Assignments.Select(a => a.UserId).ToList();
             var users = await _userRepository.GetListAsync(u => assignedUserIds.Contains(u.Id));
+            
+            dto.AssignedUserIds = assignedUserIds;
             dto.AssignedUserNames = users.Select(u => u.UserName).ToList();
             dto.AssignedUserName = string.Join(", ", dto.AssignedUserNames);
             
@@ -54,14 +60,13 @@ namespace TaskManagement.Tasks
             var currentUserId = CurrentUser.Id;
             var isBoss = await IsBossOfProject(input.ProjectId ?? Guid.Empty);
 
-            // BẢO MẬT: Nhân viên chỉ thấy task giao cho họ hoặc do họ đề xuất
             if (!isBoss)
             {
                 queryable = queryable.Where(t => 
-                    t.Assignments.Any(a => a.UserId == currentUserId) || t.CreatorId == currentUserId);
+                    t.Assignments.Any(a => a.UserId == currentUserId) || 
+                    t.CreatorId == currentUserId);
             }
 
-            // PHÂN LUỒNG: Bảng chính (Approved) vs Bảng chờ duyệt (Pending)
             queryable = queryable.Where(t => t.ProjectId == input.ProjectId && t.IsApproved == (input.IsApproved ?? true));
 
             if (!string.IsNullOrWhiteSpace(input.FilterText))
@@ -79,8 +84,9 @@ namespace TaskManagement.Tasks
                 var taskObj = tasks.First(t => t.Id == dto.Id);
                 var assignedIds = taskObj.Assignments.Select(a => a.UserId).ToList();
                 var userNames = (await _userRepository.GetListAsync(u => assignedIds.Contains(u.Id))).Select(u => u.UserName);
-                dto.AssignedUserName = userNames.Any() ? string.Join(", ", userNames) : L["TaskManagement::Unassigned"];
+                
                 dto.AssignedUserIds = assignedIds;
+                dto.AssignedUserName = userNames.Any() ? string.Join(", ", userNames) : L["TaskManagement::Unassigned"];
             }
 
             return new PagedResultDto<TaskDto>(totalCount, taskDtos);
@@ -88,21 +94,22 @@ namespace TaskManagement.Tasks
 
         public async Task<TaskDto> CreateAsync(CreateUpdateTaskDto input)
         {
-            // Kiểm tra xem User có thuộc dự án này không trước khi cho phép tạo
-            var project = await _projectRepository.WithDetailsAsync(p => p.Members);
-            var projectEntity = await project.FirstOrDefaultAsync(p => p.Id == input.ProjectId);
+            var isBoss = await IsBossOfProject(input.ProjectId);
             
-            bool isBoss = projectEntity.ProjectManagerId == CurrentUser.Id || await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create);
-            bool isMember = projectEntity.Members.Any(m => m.UserId == CurrentUser.Id);
-
-            if (!isBoss && !isMember) throw new UserFriendlyException(L["TaskManagement::NoPermissionToCreateTaskInThisProject"]);
+            if (!isBoss)
+            {
+                var projectMembers = await _projectRepository.WithDetailsAsync(p => p.Members);
+                var isMember = projectMembers.Any(p => p.Id == input.ProjectId && p.Members.Any(m => m.UserId == CurrentUser.Id));
+                if (!isMember) throw new UserFriendlyException(L["TaskManagement::NoPermissionToCreateTask"]);
+            }
 
             var task = new AppTask(GuidGenerator.Create(), input.ProjectId, input.Title)
             {
                 Description = input.Description,
                 DueDate = input.DueDate,
-                IsApproved = isBoss, // Sếp tạo -> Duyệt luôn. Nhân viên -> Chờ duyệt
-                IsRejected = false
+                IsApproved = isBoss,
+                IsRejected = false,
+                DeletionReason = null
             };
 
             foreach (var userId in input.AssignedUserIds)
@@ -130,7 +137,7 @@ namespace TaskManagement.Tasks
             var task = await _taskRepository.GetAsync(id);
             if (!await IsBossOfProject(task.ProjectId)) throw new UserFriendlyException(L["TaskManagement::NoPermission"]);
 
-            task.IsRejected = true; // Mark as rejected
+            task.IsRejected = true;
             await _taskRepository.UpdateAsync(task);
         }
 
@@ -143,20 +150,27 @@ namespace TaskManagement.Tasks
 
             bool isBoss = await IsBossOfProject(task.ProjectId);
             bool isAssignedToMe = task.Assignments.Any(a => a.UserId == CurrentUser.Id);
-
-            // BẢO MẬT: Chỉ nhân viên được giao task mới được cập nhật trạng thái
-            if (!isBoss && !isAssignedToMe) throw new UserFriendlyException(L["TaskManagement::NoPermissionToUpdateThisTask"]);
-
-            // KHÓA: Nhân viên chỉ được đổi Status, sếp được đổi tất cả
+            bool isCreator = task.CreatorId == CurrentUser.Id;
+            
             if (!isBoss)
             {
-                if (task.Title != input.Title || task.Description != input.Description)
-                    throw new UserFriendlyException(L["TaskManagement::OnlyBossCanEditTaskContent"]);
+                if (task.IsApproved)
+                {
+                    if (!isAssignedToMe) throw new UserFriendlyException(L["TaskManagement::NoPermission"]);
+                    if (input.Title != task.Title || input.Description != task.Description) 
+                        throw new UserFriendlyException(L["TaskManagement::CannotEditContentAfterApproval"]);
+                }
+                else
+                {
+                    if (!isCreator) throw new UserFriendlyException(L["TaskManagement::NoPermission"]);
+                    if (input.Status != task.Status) 
+                        throw new UserFriendlyException(L["TaskManagement::CannotChangeStatusBeforeApproval"]);
+                }
             }
 
             ObjectMapper.Map(input, task);
             
-            if (isBoss) // Chỉ sếp mới được đổi người nhận việc
+            if (isBoss)
             {
                 task.ClearAssignments();
                 foreach (var userId in input.AssignedUserIds) task.AddAssignment(userId);
@@ -170,17 +184,50 @@ namespace TaskManagement.Tasks
         {
             var task = await _taskRepository.GetAsync(id);
             if (string.IsNullOrWhiteSpace(reason)) throw new UserFriendlyException(L["TaskManagement::DeletionReasonRequired"]);
-            
-            // Chỉ xóa được task chưa Completed
-            if (task.Status == TaskStatus.Completed) throw new UserFriendlyException(L["TaskManagement::CannotDeleteCompletedTask"]);
 
+            bool isBoss = await IsBossOfProject(task.ProjectId);
+
+            // PHÂN QUYỀN XÓA
+            if (!isBoss)
+            {
+                // Nhân viên chỉ được xóa Đề xuất (Chưa duyệt) của chính họ
+                if (task.IsApproved) throw new UserFriendlyException(L["TaskManagement::NoPermissionToDeleteApprovedTask"]);
+                if (task.CreatorId != CurrentUser.Id) throw new UserFriendlyException(L["TaskManagement::NoPermission"]);
+            }
+            else
+            {
+                // Sếp không được xóa Task đã hoàn thành
+                if (task.Status == TaskStatus.Completed) throw new UserFriendlyException(L["TaskManagement::CannotDeleteCompletedTask"]);
+            }
+
+            task.DeletionReason = reason;
             await _taskRepository.DeleteAsync(id);
         }
 
-        private async Task<bool> IsBossOfProject(Guid projectId)
+        public async Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId)
         {
-            var project = await _projectRepository.GetAsync(projectId);
-            return project.ProjectManagerId == CurrentUser.Id || await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create);
+            var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
+            var tasks = await queryable.Where(t => t.ProjectId == projectId && t.DueDate < Clock.Now && t.Status != TaskStatus.Completed).ToListAsync();
+            
+            var dtos = ObjectMapper.Map<List<AppTask>, List<TaskDto>>(tasks);
+
+            foreach (var dto in dtos)
+            {
+                var taskObj = tasks.First(t => t.Id == dto.Id);
+                var assignedIds = taskObj.Assignments.Select(a => a.UserId).ToList();
+                
+                if (assignedIds.Any())
+                {
+                    var users = await _userRepository.GetListAsync(u => assignedIds.Contains(u.Id));
+                    dto.AssignedUserName = string.Join(", ", users.Select(u => u.UserName));
+                    dto.AssignedUserIds = assignedIds;
+                }
+                else
+                {
+                    dto.AssignedUserName = L["TaskManagement::Unassigned"];
+                }
+            }
+            return new PagedResultDto<TaskDto>(dtos.Count, dtos);
         }
 
         public async Task<ListResultDto<UserLookupDto>> GetUserLookupAsync()
@@ -189,20 +236,18 @@ namespace TaskManagement.Tasks
             return new ListResultDto<UserLookupDto>(users.Select(u => new UserLookupDto { Id = u.Id, UserName = u.UserName }).ToList());
         }
 
-        public async Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId)
+        private async Task<bool> IsBossOfProject(Guid projectId)
         {
-            var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
-            var tasks = await queryable.Where(t => t.ProjectId == projectId && t.DueDate < Clock.Now).ToListAsync();
-            
-            var dtos = ObjectMapper.Map<List<AppTask>, List<TaskDto>>(tasks);
-            foreach (var dto in dtos)
-            {
-                var taskObj = tasks.First(t => t.Id == dto.Id);
-                var assignedIds = taskObj.Assignments.Select(a => a.UserId).ToList();
-                var userNames = (await _userRepository.GetListAsync(u => assignedIds.Contains(u.Id))).Select(u => u.UserName);
-                dto.AssignedUserName = string.Join(", ", userNames); 
-            }
-            return new PagedResultDto<TaskDto>(dtos.Count, dtos);
+            if (projectId == Guid.Empty) return false;
+            var project = await _projectRepository.GetAsync(projectId);
+            return project.ProjectManagerId == CurrentUser.Id || 
+                   await AuthorizationService.IsGrantedAsync("TaskManagement.Projects.Create");
+        }
+
+        private async Task<bool> CanViewTask(AppTask task)
+        {
+            if (await IsBossOfProject(task.ProjectId)) return true;
+            return task.Assignments.Any(a => a.UserId == CurrentUser.Id) || task.CreatorId == CurrentUser.Id;
         }
     }
 }

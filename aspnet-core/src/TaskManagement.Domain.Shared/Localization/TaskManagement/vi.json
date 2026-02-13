@@ -1,12 +1,13 @@
 {
   "culture": "vi",
   "texts": {
-    "Menu:Home": "Trang chủ",
     "Welcome": "Xin chào",
     "Menu:TaskManagement": "Quản lý dự án",
     "Menu:Projects": "Dự án",
     "Menu:Tasks": "Danh sách công việc",
-
+    "Menu:Home": "Trang chủ",
+    "Home": "Trang chủ", 
+    "Tasks": "Danh sách công việc",
     "Permission:TaskManagement": "Quản lý công việc",
     "Permission:Projects": "Quản lý dự án",
     "Permission:Projects.Create": "Tạo mới dự án",
@@ -66,6 +67,26 @@
     "Enum:TaskStatus.2": "Hoàn thành",
     "Enum:TaskStatus:New": "Mới",
     "Enum:TaskStatus:InProgress": "Đang xử lý",
-    "Enum:TaskStatus:Completed": "Hoàn thành"
+    "Enum:TaskStatus:Completed": "Hoàn thành",
+    "TOTAL_TASKS": "TỔNG SỐ CÔNG VIỆC",
+    "IN_PROGRESS": "ĐANG XỬ LÝ",
+    "OVERDUE_TASKS": "CÔNG VIỆC QUÁ HẠN",
+    "PENDING_APPROVAL": "CHỜ PHÊ DUYỆT",
+    "Creator": "Người tạo",
+    "Action": "Hành động",
+    "ProposeTask": "Đề xuất công việc",
+    "ViewDetail": "Xem chi tiết",
+    "GettingStarted": "Bắt đầu ngay",
+    "GettingStartedDescription": "Tìm hiểu cách tạo và chạy ứng dụng web mới bằng mẫu khởi động ứng dụng.",
+    "TutorialTitle": "Hướng dẫn phát triển ứng dụng Web",
+    "TutorialDescription": "Tìm hiểu cách xây dựng ứng dụng web dựa trên ABP có tên Acme.BookStore.",
+    "ExploreTutorial": "Khám phá hướng dẫn",
+    "SupportDescription": "Bạn có thể kiểm tra các vấn đề và giải pháp tương tự hoặc mở một chủ đề mới để thảo luận về vấn đề cụ thể của bạn.",
+    "VisitSupport": "Hỗ trợ",
+    "BlogDescription": "Bạn có thể tìm thấy nội dung về phát triển .NET, đa nền tảng, mẫu ứng dụng ASP.NET, tin tức liên quan đến ABP, v.v.",
+    "VisitBlog": "Xem Blog",
+    "CommunityTitle": "Một nền tảng cộng đồng độc đáo dành cho những người yêu thích ABP!",
+    "CommunityDescription": "Khám phá trải nghiệm của tất cả người dùng ABP với Framework, khám phá các bài viết và video về cách sử dụng ABP!",
+    "JoinCommunity": "Tham gia cộng đồng"
   }
 }

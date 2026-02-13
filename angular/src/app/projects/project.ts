@@ -44,7 +44,8 @@ export class ProjectComponent implements OnInit {
   public permission = inject(PermissionService);
 
   projectData: PagedResultDto<ProjectDto> = { items: [], totalCount: 0 };
-  users: any[] = [];
+  users: any[] = []; // Danh sách nhân viên (MemberIds)
+  projectManagers: any[] = []; // Danh sách sếp (ProjectManagerId)
   loading = false;
   isModalOpen = false;
   isEditMode = false;
@@ -57,15 +58,17 @@ export class ProjectComponent implements OnInit {
   ngOnInit(): void {
     this.buildForm();
     this.loadUsers();
+    this.loadProjectManagers(); // Chỉ load những người có Role PM
     this.loadProjects();
   }
 
   loadProjects(): void {
     const streamCreator = (query) => {
       this.loading = true;
+      // FIX: Gửi filterText lên Backend để tìm kiếm "cid"
       return this.projectService.getList({ 
         ...query, 
-        filterText: this.filterText,
+        filterText: this.filterText, 
         sorting: this.sorting 
       });
     };
@@ -75,14 +78,21 @@ export class ProjectComponent implements OnInit {
     });
   }
 
-  toggleCreationSort(): void {
-    this.isCreationSortDesc = !this.isCreationSortDesc;
-    this.sorting = `CreationTime ${this.isCreationSortDesc ? 'DESC' : 'ASC'}`;
-    this.list.get();
+  loadProjectManagers(): void {
+    // Gọi API lọc theo Role "Project manager"
+    this.projectService.getProjectManagersLookup().subscribe(res => {
+      this.projectManagers = res.items;
+    });
   }
 
   loadUsers(): void {
     this.taskService.getUserLookup().subscribe(res => this.users = res.items);
+  }
+
+  toggleCreationSort(): void {
+    this.isCreationSortDesc = !this.isCreationSortDesc;
+    this.sorting = `CreationTime ${this.isCreationSortDesc ? 'DESC' : 'ASC'}`;
+    this.list.get();
   }
 
   buildForm(): void {
@@ -91,12 +101,11 @@ export class ProjectComponent implements OnInit {
       name: ['', [Validators.required, Validators.maxLength(128)]],
       description: [''],
       projectManagerId: [null, Validators.required],
-      memberIds: [[]]
+      memberIds: [[]] // Mảng ID thành viên để phục vụ multi-select
     });
   }
 
   openTasks(projectId: string): void {
-    // Điều hướng tới trang chi tiết Task của dự án
     this.router.navigate(['/tasks/details'], { queryParams: { projectId } });
   }
 
@@ -109,8 +118,13 @@ export class ProjectComponent implements OnInit {
   editProject(event: Event, project: ProjectDto): void {
     event.stopPropagation();
     this.isEditMode = true;
+    
+    // Lấy chi tiết để có danh sách MemberIds nhằm tick sẵn các ô chọn
     this.projectService.get(project.id).subscribe(res => {
-      this.form.patchValue(res);
+      this.form.patchValue({
+        ...res,
+        memberIds: res.memberIds || []
+      });
       this.isModalOpen = true;
     });
   }
@@ -123,7 +137,7 @@ export class ProjectComponent implements OnInit {
       : this.projectService.create(this.form.value);
 
     request.subscribe(() => {
-      this.message.success(this.l('TaskManagement::Success'));
+      this.message.success(this.l('TaskManagement::SaveSuccess'));
       this.isModalOpen = false;
       this.saving = false;
       this.list.get();
@@ -133,14 +147,12 @@ export class ProjectComponent implements OnInit {
   deleteProject(event: Event, id: string): void {
     event.stopPropagation();
     this.projectService.delete(id).subscribe(() => {
-      this.message.success(this.l('TaskManagement::Deleted'));
+      this.message.success(this.l('TaskManagement::DeletedSuccess'));
       this.list.get();
     });
   }
 
-  handleCancel(): void {
-    this.isModalOpen = false;
-  }
+  handleCancel(): void { this.isModalOpen = false; }
 
   private l(key: string): string { return key; }
 }

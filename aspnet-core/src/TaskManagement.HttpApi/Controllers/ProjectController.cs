@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.AspNetCore.Mvc;
-using TaskManagement.Tasks;
+using TaskManagement.Tasks; // Để dùng UserLookupDto
 
 namespace TaskManagement.Projects
 {
@@ -22,13 +22,10 @@ namespace TaskManagement.Projects
         [HttpGet("{id}")]
         public Task<ProjectDto> GetAsync(Guid id) => _projectAppService.GetAsync(id);
 
+        // SỬA: Chữ ký hàm phải khớp với Interface mới (GetProjectsInput)
         [HttpGet]
-        public Task<PagedResultDto<ProjectDto>> GetListAsync(PagedAndSortedResultRequestDto input) 
+        public Task<PagedResultDto<ProjectDto>> GetListAsync(GetProjectsInput input) 
             => _projectAppService.GetListAsync(input);
-
-        [HttpGet("{projectId}/members-lookup")]
-        public Task<ListResultDto<UserLookupDto>> GetMembersLookupAsync(Guid projectId) 
-            => _projectAppService.GetMembersLookupAsync(projectId);
 
         [HttpPost]
         public Task<ProjectDto> CreateAsync(CreateUpdateProjectDto input) 
@@ -40,5 +37,14 @@ namespace TaskManagement.Projects
 
         [HttpDelete("{id}")]
         public Task DeleteAsync(Guid id) => _projectAppService.DeleteAsync(id);
+
+        [HttpGet("members/{projectId}")]
+        public Task<ListResultDto<UserLookupDto>> GetMembersLookupAsync(Guid projectId) 
+            => _projectAppService.GetMembersLookupAsync(projectId);
+
+        // THÊM: Endpoint để lấy danh sách Project Manager (Sửa lỗi CS0535)
+        [HttpGet("project-managers-lookup")]
+        public Task<ListResultDto<UserLookupDto>> GetProjectManagersLookupAsync() 
+            => _projectAppService.GetProjectManagersLookupAsync();
     }
 }
