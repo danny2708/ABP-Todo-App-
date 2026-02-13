@@ -1,5 +1,6 @@
 using System;
 using Volo.Abp.Application.Dtos;
+using System.Collections.Generic;
 
 namespace TaskManagement.Projects;
 
@@ -12,4 +13,5 @@ public class ProjectDto : AuditedEntityDto<Guid>
     public float Progress { get; set; } // % Tiến độ dự án
     public int TaskCount { get; set; } // Tổng số task
     public int CompletedTaskCount { get; set; } // Số task đã xong
+    public List<Guid> MemberIds { get; set; } = new List<Guid>(); // Danh sách ID thành viên
 }

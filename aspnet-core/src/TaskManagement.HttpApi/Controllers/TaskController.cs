@@ -33,18 +33,23 @@ namespace TaskManagement.Tasks
         public Task<TaskDto> UpdateAsync(Guid id, CreateUpdateTaskDto input) 
             => _taskAppService.UpdateAsync(id, input);
 
+        // SỬA: Chữ ký hàm phải khớp hoàn toàn với Interface (Guid, string)
         [HttpDelete("{id}")]
-        public Task DeleteAsync(Guid id) => _taskAppService.DeleteAsync(id);
+        public Task DeleteAsync(Guid id, string reason) 
+            => _taskAppService.DeleteAsync(id, reason);
 
         [HttpGet("user-lookup")]
         public Task<ListResultDto<UserLookupDto>> GetUserLookupAsync() 
             => _taskAppService.GetUserLookupAsync();
 
-        // --- BỔ SUNG THEO YÊU CẦU MỚI ---
-
         [HttpPost("{id}/approve")]
         public Task<TaskDto> ApproveAsync(Guid id) 
             => _taskAppService.ApproveAsync(id);
+
+        // THÊM: Triển khai RejectAsync
+        [HttpPost("{id}/reject")]
+        public Task RejectAsync(Guid id) 
+            => _taskAppService.RejectAsync(id);
 
         [HttpGet("overdue/{projectId}")]
         public Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId) 

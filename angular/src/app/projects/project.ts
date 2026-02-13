@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core'; // Thêm inject
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ListService, PagedResultDto, CoreModule, PermissionService } from '@abp/ng.core';
@@ -18,7 +18,6 @@ import { NzMessageService } from 'ng-zorro-antd/message';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 
-// SỬA: Import trực tiếp từ file service để tránh lỗi "No value"
 import { ProjectService } from '../proxy/projects/project.service';
 import { ProjectDto } from '../proxy/projects/models';
 import { TaskService } from '../proxy/tasks/task.service';
@@ -36,7 +35,6 @@ import { TaskService } from '../proxy/tasks/task.service';
   ],
 })
 export class ProjectComponent implements OnInit {
-  // Inject services theo cách mới
   public readonly list = inject(ListService);
   private projectService = inject(ProjectService);
   private taskService = inject(TaskService);
@@ -53,7 +51,6 @@ export class ProjectComponent implements OnInit {
   saving = false;
   form!: FormGroup;
   filterText = '';
-  
   sorting = 'CreationTime DESC';
   isCreationSortDesc = true;
 
@@ -72,7 +69,6 @@ export class ProjectComponent implements OnInit {
         sorting: this.sorting 
       });
     };
-
     this.list.hookToQuery(streamCreator).subscribe(res => {
       this.projectData = res;
       this.loading = false;
@@ -100,6 +96,7 @@ export class ProjectComponent implements OnInit {
   }
 
   openTasks(projectId: string): void {
+    // Điều hướng tới trang chi tiết Task của dự án
     this.router.navigate(['/tasks/details'], { queryParams: { projectId } });
   }
 
@@ -126,7 +123,7 @@ export class ProjectComponent implements OnInit {
       : this.projectService.create(this.form.value);
 
     request.subscribe(() => {
-      this.message.success('Thành công!');
+      this.message.success(this.l('TaskManagement::Success'));
       this.isModalOpen = false;
       this.saving = false;
       this.list.get();
@@ -136,7 +133,7 @@ export class ProjectComponent implements OnInit {
   deleteProject(event: Event, id: string): void {
     event.stopPropagation();
     this.projectService.delete(id).subscribe(() => {
-      this.message.success('Đã xóa!');
+      this.message.success(this.l('TaskManagement::Deleted'));
       this.list.get();
     });
   }
@@ -144,4 +141,6 @@ export class ProjectComponent implements OnInit {
   handleCancel(): void {
     this.isModalOpen = false;
   }
+
+  private l(key: string): string { return key; }
 }

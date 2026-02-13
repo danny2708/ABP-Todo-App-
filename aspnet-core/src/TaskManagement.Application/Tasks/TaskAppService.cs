@@ -11,6 +11,7 @@ using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
 using System.Linq.Dynamic.Core;
+using Microsoft.EntityFrameworkCore;
 
 namespace TaskManagement.Tasks
 {
@@ -31,155 +32,177 @@ namespace TaskManagement.Tasks
             _projectRepository = projectRepository;
         }
 
-        // 1. Lấy chi tiết 1 Task
         public async Task<TaskDto> GetAsync(Guid id)
         {
-            var task = await _taskRepository.GetTaskByIdAsync(id);
-            if (task == null) throw new UserFriendlyException("Không tìm thấy công việc.");
+            var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
+            var task = await queryable.FirstOrDefaultAsync(t => t.Id == id);
+            
+            if (task == null) throw new UserFriendlyException(L["TaskManagement::TaskNotFound"]);
 
             var dto = ObjectMapper.Map<AppTask, TaskDto>(task);
-            
-            if (task.AssignedUserId.HasValue)
-            {
-                var user = await _userRepository.FindAsync(task.AssignedUserId.Value);
-                dto.AssignedUserName = user?.UserName;
-            }
+            var assignedUserIds = task.Assignments.Select(a => a.UserId).ToList();
+            var users = await _userRepository.GetListAsync(u => assignedUserIds.Contains(u.Id));
+            dto.AssignedUserNames = users.Select(u => u.UserName).ToList();
+            dto.AssignedUserName = string.Join(", ", dto.AssignedUserNames);
             
             return dto;
         }
 
-        // 2. Lấy danh sách Task theo Project (Có phân trang, lọc, sắp xếp)
         public async Task<PagedResultDto<TaskDto>> GetListAsync(GetTasksInput input)
         {
-            if (!input.ProjectId.HasValue) 
-                throw new UserFriendlyException("Vui lòng chọn một dự án cụ thể.");
+            var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
+            var currentUserId = CurrentUser.Id;
+            var isBoss = await IsBossOfProject(input.ProjectId ?? Guid.Empty);
 
-            // Lấy tổng số lượng dựa trên bộ lọc
-            var totalCount = await _taskRepository.GetTotalCountAsync(
-                input.ProjectId, 
-                input.FilterText, 
-                input.Status, 
-                input.AssignedUserId, 
-                input.IsApproved ?? true // Mặc định chỉ hiện các task đã duyệt
-            );
+            // BẢO MẬT: Nhân viên chỉ thấy task giao cho họ hoặc do họ đề xuất
+            if (!isBoss)
+            {
+                queryable = queryable.Where(t => 
+                    t.Assignments.Any(a => a.UserId == currentUserId) || t.CreatorId == currentUserId);
+            }
 
-            // Truy vấn danh sách Task
-            var tasks = await _taskRepository.GetListAsync(
-                input.SkipCount, 
-                input.MaxResultCount, 
-                input.Sorting ?? "CreationTime DESC", 
-                input.ProjectId, 
-                input.FilterText, 
-                input.Status, 
-                input.AssignedUserId, 
-                input.IsApproved ?? true
-            );
+            // PHÂN LUỒNG: Bảng chính (Approved) vs Bảng chờ duyệt (Pending)
+            queryable = queryable.Where(t => t.ProjectId == input.ProjectId && t.IsApproved == (input.IsApproved ?? true));
+
+            if (!string.IsNullOrWhiteSpace(input.FilterText))
+            {
+                queryable = queryable.Where(t => t.Title.Contains(input.FilterText));
+            }
+
+            var totalCount = await AsyncExecuter.CountAsync(queryable);
+            var tasks = await AsyncExecuter.ToListAsync(queryable.OrderBy(input.Sorting ?? "CreationTime DESC").PageBy(input.SkipCount, input.MaxResultCount));
 
             var taskDtos = ObjectMapper.Map<List<AppTask>, List<TaskDto>>(tasks);
 
-            // Tối ưu hiệu năng: Lấy danh sách UserName bằng Dictionary
-            var userIds = tasks.Where(t => t.AssignedUserId.HasValue)
-                               .Select(t => t.AssignedUserId!.Value)
-                               .Distinct().ToList();
-            
-            var userDict = userIds.Any() 
-                ? (await _userRepository.GetListAsync(u => userIds.Contains(u.Id)))
-                  .ToDictionary(u => u.Id, u => u.UserName) 
-                : new Dictionary<Guid, string>();
-
             foreach (var dto in taskDtos)
             {
-                if (dto.AssignedUserId.HasValue && userDict.TryGetValue(dto.AssignedUserId.Value, out var userName))
-                {
-                    dto.AssignedUserName = userName;
-                }
+                var taskObj = tasks.First(t => t.Id == dto.Id);
+                var assignedIds = taskObj.Assignments.Select(a => a.UserId).ToList();
+                var userNames = (await _userRepository.GetListAsync(u => assignedIds.Contains(u.Id))).Select(u => u.UserName);
+                dto.AssignedUserName = userNames.Any() ? string.Join(", ", userNames) : L["TaskManagement::Unassigned"];
+                dto.AssignedUserIds = assignedIds;
             }
 
             return new PagedResultDto<TaskDto>(totalCount, taskDtos);
         }
 
-        // 3. Tạo Task mới (Admin/PM tạo thẳng, User tạo là đề xuất)
         public async Task<TaskDto> CreateAsync(CreateUpdateTaskDto input)
         {
-            var project = await _projectRepository.GetAsync(input.ProjectId);
+            // Kiểm tra xem User có thuộc dự án này không trước khi cho phép tạo
+            var project = await _projectRepository.WithDetailsAsync(p => p.Members);
+            var projectEntity = await project.FirstOrDefaultAsync(p => p.Id == input.ProjectId);
             
-            // Kiểm tra xem người tạo có phải Admin hoặc Project Manager không
-            var isManagerOrAdmin = project.ProjectManagerId == CurrentUser.Id || 
-                                   await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create);
+            bool isBoss = projectEntity.ProjectManagerId == CurrentUser.Id || await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create);
+            bool isMember = projectEntity.Members.Any(m => m.UserId == CurrentUser.Id);
+
+            if (!isBoss && !isMember) throw new UserFriendlyException(L["TaskManagement::NoPermissionToCreateTaskInThisProject"]);
 
             var task = new AppTask(GuidGenerator.Create(), input.ProjectId, input.Title)
             {
                 Description = input.Description,
-                Status = input.Status,
-                AssignedUserId = input.AssignedUserId,
                 DueDate = input.DueDate,
-                IsApproved = isManagerOrAdmin // Nếu không phải sếp, task sẽ ở trạng thái chờ duyệt
+                IsApproved = isBoss, // Sếp tạo -> Duyệt luôn. Nhân viên -> Chờ duyệt
+                IsRejected = false
             };
 
-            await _taskRepository.CreateTaskAsync(task);
+            foreach (var userId in input.AssignedUserIds)
+            {
+                task.AddAssignment(userId);
+            }
+
+            await _taskRepository.InsertAsync(task);
             return ObjectMapper.Map<AppTask, TaskDto>(task);
         }
 
-        // 4. Phê duyệt đề xuất Task
         public async Task<TaskDto> ApproveAsync(Guid id)
         {
             var task = await _taskRepository.GetAsync(id);
-            var project = await _projectRepository.GetAsync(task.ProjectId);
-
-            // Chỉ PM của dự án đó hoặc Admin mới có quyền duyệt
-            if (project.ProjectManagerId != CurrentUser.Id && 
-                !await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create))
-            {
-                throw new UserFriendlyException("Bạn không có quyền phê duyệt công việc cho dự án này.");
-            }
+            if (!await IsBossOfProject(task.ProjectId)) throw new UserFriendlyException(L["TaskManagement::NoPermission"]);
 
             task.IsApproved = true;
+            task.IsRejected = false;
             await _taskRepository.UpdateAsync(task);
             return ObjectMapper.Map<AppTask, TaskDto>(task);
         }
 
-        // 5. Cập nhật thông tin Task
+        public async Task RejectAsync(Guid id)
+        {
+            var task = await _taskRepository.GetAsync(id);
+            if (!await IsBossOfProject(task.ProjectId)) throw new UserFriendlyException(L["TaskManagement::NoPermission"]);
+
+            task.IsRejected = true; // Mark as rejected
+            await _taskRepository.UpdateAsync(task);
+        }
+
         public async Task<TaskDto> UpdateAsync(Guid id, CreateUpdateTaskDto input)
         {
-            var task = await _taskRepository.GetTaskByIdAsync(id);
-            if (task == null) throw new UserFriendlyException("Công việc không tồn tại.");
+            var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
+            var task = await queryable.FirstOrDefaultAsync(t => t.Id == id);
+            
+            if (task == null) throw new UserFriendlyException(L["TaskManagement::TaskNotFound"]);
+
+            bool isBoss = await IsBossOfProject(task.ProjectId);
+            bool isAssignedToMe = task.Assignments.Any(a => a.UserId == CurrentUser.Id);
+
+            // BẢO MẬT: Chỉ nhân viên được giao task mới được cập nhật trạng thái
+            if (!isBoss && !isAssignedToMe) throw new UserFriendlyException(L["TaskManagement::NoPermissionToUpdateThisTask"]);
+
+            // KHÓA: Nhân viên chỉ được đổi Status, sếp được đổi tất cả
+            if (!isBoss)
+            {
+                if (task.Title != input.Title || task.Description != input.Description)
+                    throw new UserFriendlyException(L["TaskManagement::OnlyBossCanEditTaskContent"]);
+            }
 
             ObjectMapper.Map(input, task);
-            await _taskRepository.UpdateTaskAsync(task);
             
+            if (isBoss) // Chỉ sếp mới được đổi người nhận việc
+            {
+                task.ClearAssignments();
+                foreach (var userId in input.AssignedUserIds) task.AddAssignment(userId);
+            }
+
+            await _taskRepository.UpdateAsync(task);
             return ObjectMapper.Map<AppTask, TaskDto>(task);
         }
 
-        // 6. Xóa Task
-        public async Task DeleteAsync(Guid id)
+        public async Task DeleteAsync(Guid id, string reason)
         {
-            await _taskRepository.DeleteTaskAsync(id);
+            var task = await _taskRepository.GetAsync(id);
+            if (string.IsNullOrWhiteSpace(reason)) throw new UserFriendlyException(L["TaskManagement::DeletionReasonRequired"]);
+            
+            // Chỉ xóa được task chưa Completed
+            if (task.Status == TaskStatus.Completed) throw new UserFriendlyException(L["TaskManagement::CannotDeleteCompletedTask"]);
+
+            await _taskRepository.DeleteAsync(id);
         }
 
-        // 7. Lấy danh sách Task quá hạn (Overdue)
-        public async Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId)
+        private async Task<bool> IsBossOfProject(Guid projectId)
         {
-            var queryable = await _taskRepository.GetQueryableAsync();
-            
-            // Lọc: Thuộc dự án, Hạn chót < hiện tại, Chưa hoàn thành, Đã được duyệt
-            var overdueTasks = queryable.Where(t => t.ProjectId == projectId && 
-                                                    t.DueDate < Clock.Now && 
-                                                    t.Status != TaskStatus.Completed &&
-                                                    t.IsApproved);
-            
-            var totalCount = await AsyncExecuter.CountAsync(overdueTasks);
-            var tasks = await AsyncExecuter.ToListAsync(overdueTasks.OrderBy(t => t.DueDate));
-            
-            return new PagedResultDto<TaskDto>(totalCount, ObjectMapper.Map<List<AppTask>, List<TaskDto>>(tasks));
+            var project = await _projectRepository.GetAsync(projectId);
+            return project.ProjectManagerId == CurrentUser.Id || await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create);
         }
 
-        // 8. Lookup danh sách User cho Dropdown
         public async Task<ListResultDto<UserLookupDto>> GetUserLookupAsync()
         {
             var users = await _userRepository.GetListAsync();
-            return new ListResultDto<UserLookupDto>(
-                users.Select(u => new UserLookupDto { Id = u.Id, UserName = u.UserName }).ToList()
-            );
+            return new ListResultDto<UserLookupDto>(users.Select(u => new UserLookupDto { Id = u.Id, UserName = u.UserName }).ToList());
+        }
+
+        public async Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId)
+        {
+            var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
+            var tasks = await queryable.Where(t => t.ProjectId == projectId && t.DueDate < Clock.Now).ToListAsync();
+            
+            var dtos = ObjectMapper.Map<List<AppTask>, List<TaskDto>>(tasks);
+            foreach (var dto in dtos)
+            {
+                var taskObj = tasks.First(t => t.Id == dto.Id);
+                var assignedIds = taskObj.Assignments.Select(a => a.UserId).ToList();
+                var userNames = (await _userRepository.GetListAsync(u => assignedIds.Contains(u.Id))).Select(u => u.UserName);
+                dto.AssignedUserName = string.Join(", ", userNames); 
+            }
+            return new PagedResultDto<TaskDto>(dtos.Count, dtos);
         }
     }
 }

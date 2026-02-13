@@ -1,8 +1,15 @@
 <div class="task-manager-container p-3 bg-white min-vh-100">
+  <div class="d-flex align-items-center mb-4">
+    <button nz-button nzType="text" (click)='goBack()' class="me-3 p-0">
+        <i nz-icon nzType="arrow-left" class="text-primary fs-4"></i>
+    </button>
+    <h3 class="text-black fw-bold mb-0">{{ projectName }}</h3>
+  </div>
+
   <div class="row g-3 mb-3">
     <div class="col-md-3" *ngFor="let stat of [
-      {label: 'TaskManagement::TOTAL TASKS', count: taskData.totalCount, color: 'text-primary', icon: 'fa-tasks', bg: 'bg-soft-primary'}, 
-      {label: 'TaskManagement::IN PROGRESS', count: inProgressCount, color: 'text-warning', icon: 'fa-spinner', bg: 'bg-soft-warning'}, 
+      {label: 'TaskManagement::TOTAL_TASKS', count: taskData.totalCount, color: 'text-primary', icon: 'fa-tasks', bg: 'bg-soft-primary'}, 
+      {label: 'TaskManagement::IN_PROGRESS', count: inProgressCount, color: 'text-warning', icon: 'fa-spinner', bg: 'bg-soft-warning'}, 
       {label: 'TaskManagement::COMPLETED', count: completedCount, color: 'text-success', icon: 'fa-check-double', bg: 'bg-soft-success'}
     ]">
       <div class="stat-card py-2 px-3 border shadow-none">
@@ -14,11 +21,20 @@
       </div>
     </div>
     <div class="col-md-3">
-      <div class="stat-card py-2 px-3 border border-danger shadow-none bg-soft-danger cursor-pointer" (click)="isOverdueModalOpen = true">
-        <div class="stat-icon bg-danger text-white"><i class="fas fa-exclamation-triangle"></i></div>
-        <div class="stat-content">
-          <span class="text-danger small fw-bold text-uppercase">{{ 'TaskManagement::OVERDUE TASKS' | abpLocalization }}</span>
-          <h4 class="mb-0 fw-bold text-danger">{{ overdueTasks.length }}</h4>
+      <div class="d-flex flex-column gap-2">
+        <div class="stat-card py-1 px-3 border border-danger shadow-none bg-soft-danger cursor-pointer" (click)="isOverdueModalOpen = true">
+            <div class="stat-icon bg-danger text-white"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="stat-content">
+              <span class="text-danger x-small fw-bold">{{ 'TaskManagement::OVERDUE_TASKS' | abpLocalization }}</span>
+              <h5 class="mb-0 fw-bold text-danger">{{ overdueTasks.length }}</h5>
+            </div>
+        </div>
+        <div class="stat-card py-1 px-3 border border-info shadow-none bg-soft-primary cursor-pointer" (click)="isPendingModalOpen = true">
+            <div class="stat-icon bg-info text-white"><i class="fas fa-clock"></i></div>
+            <div class="stat-content">
+              <span class="text-info x-small fw-bold">{{ 'TaskManagement::PENDING_APPROVAL' | abpLocalization }}</span>
+              <h5 class="mb-0 fw-bold text-info">{{ pendingCount }}</h5>
+            </div>
         </div>
       </div>
     </div>
@@ -27,108 +43,45 @@
   <div class="card tasks-card border shadow-none">
     <div class="card-header border-0 bg-white py-2 px-3">
       <div class="row align-items-center">
-        <div class="col-md-5">
-          <h5 class="mb-0 text-black fw-bold text-truncate">
-            <i class="fas fa-folder-open me-2 text-primary"></i> 
-            {{ projectName }} / {{ 'TaskManagement::Menu:Tasks' | abpLocalization }}
-          </h5>
-        </div>
-        <div class="col-md-4">
-          <nz-input-group [nzPrefix]="prefixIconSearch" class="search-compact">
-            <input type="text" nz-input [(ngModel)]="filterText" (input)="onSearch()" [placeholder]="'TaskManagement::TaskTitlePlaceholder' | abpLocalization" />
+        <div class="col-md-9">
+          <nz-input-group [nzPrefix]="prefixIconSearch" class="search-compact w-50">
+            <input type="text" nz-input [(ngModel)]="filterText" (input)="onSearch()" [placeholder]="'TaskManagement::SearchPlaceholder' | abpLocalization" />
           </nz-input-group>
           <ng-template #prefixIconSearch><i nz-icon nzType="search" class="text-muted"></i></ng-template>
         </div>
         <div class="col-md-3 text-end">
           <button nz-button nzType="primary" (click)="createTask()" class="rounded-pill px-3 shadow-none">
-            <i nz-icon nzType="plus"></i> {{ (hasCreatePermission ? ('TaskManagement::NewTask' | abpLocalization) : ('TaskManagement::Proposal' | abpLocalization)) }}
+            <i nz-icon nzType="plus"></i> {{ (hasCreatePermission ? ('TaskManagement::NewTask' | abpLocalization) : ('TaskManagement::ProposeTask' | abpLocalization)) }}
           </button>
         </div>
       </div>
     </div>
 
     <div class="card-body px-3 py-2">
-      <div class="row g-2 mb-3 align-items-end">
-        <div class="col-md-4">
-          <label class="form-label text-black fw-bold small mb-1">{{ 'TaskManagement::Status' | abpLocalization }}</label>
-          <nz-select [(ngModel)]="filterStatus" nzAllowClear [nzPlaceHolder]="'TaskManagement::FilterByStatus' | abpLocalization" (ngModelChange)="onFilterChange()" class="w-100">
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:New' | abpLocalization" [nzValue]="taskStatus.New"></nz-option>
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:InProgress' | abpLocalization" [nzValue]="taskStatus.InProgress"></nz-option>
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:Completed' | abpLocalization" [nzValue]="taskStatus.Completed"></nz-option>
-          </nz-select>
-        </div>
-        <div class="col-md-4">
-          <label class="form-label text-black fw-bold small mb-1">{{ 'TaskManagement::AssignedTo' | abpLocalization }}</label>
-          <nz-select [(ngModel)]="filterAssignedUserId" nzAllowClear nzShowSearch [nzPlaceHolder]="'TaskManagement::FilterByUser' | abpLocalization" (ngModelChange)="onFilterChange()" class="w-100">
-            <nz-option *ngFor="let user of users" [nzLabel]="user.userName" [nzValue]="user.id"></nz-option>
-          </nz-select>
-        </div>
-        <div class="col-md-2">
-          <button nz-button nzType="text" (click)="clearFilters()" class="text-black fw-bold small mt-4">
-            <i nz-icon nzType="close-circle"></i> {{ 'TaskManagement::Clear' | abpLocalization }}
-          </button>
-        </div>
-      </div>
-
-      <nz-table #tasksTable class="modern-table" [nzData]="taskData.items" [nzTotal]="taskData.totalCount" [nzLoading]="loading" 
+      <nz-table #tasksTable [nzData]="taskData.items" [nzTotal]="taskData.totalCount" [nzLoading]="loading" 
                 [nzFrontPagination]="false" [nzShowPagination]="true" [nzPageSize]="pageSize" [nzPageIndex]="pageIndex" 
-                (nzPageIndexChange)="onPageChange($event)" nzSize="small">
+                (nzPageIndexChange)="onPageChange($event)" (nzPageSizeChange)="onPageSizeChange($event)" nzSize="small">
         <thead>
           <tr>
-            <th class="text-black fw-bold" nzShowSort nzColumnKey="title" (nzSortOrderChange)="onSortChange($event)">
-              {{ 'TaskManagement::Title' | abpLocalization }}
-              <span class="ms-2 creation-sort-btn" (click)="toggleCreationSort($event)" 
-                    nz-tooltip [nzTooltipTitle]="isCreationSortDesc ? ('TaskManagement::SortNewest' | abpLocalization) : ('TaskManagement::SortOldest' | abpLocalization)">
-                <i nz-icon [nzType]="isCreationSortDesc ? 'sort-descending' : 'sort-ascending'" 
-                   [class.text-primary]="sorting.includes('CreationTime')"></i>
-              </span>
-            </th>
-            <th class="text-black fw-bold" nzShowSort nzColumnKey="status" (nzSortOrderChange)="onSortChange($event)">{{ 'TaskManagement::Status' | abpLocalization }}</th>
-            <th class="text-black fw-bold" nzShowSort nzColumnKey="assignedUserId" (nzSortOrderChange)="onSortChange($event)">{{ 'TaskManagement::AssignedTo' | abpLocalization }}</th>
-            <th class="text-black fw-bold" nzShowSort nzColumnKey="dueDate" (nzSortOrderChange)="onSortChange($event)">{{ 'TaskManagement::DueDate' | abpLocalization }}</th>
-            <th class="text-end text-black fw-bold">{{ 'TaskManagement::Actions' | abpLocalization }}</th>
+            <th>{{ 'TaskManagement::Title' | abpLocalization }}</th>
+            <th>{{ 'TaskManagement::Status' | abpLocalization }}</th>
+            <th>{{ 'TaskManagement::AssignedTo' | abpLocalization }}</th>
+            <th>{{ 'TaskManagement::DueDate' | abpLocalization }}</th>
+            <th class="text-end">{{ 'TaskManagement::Actions' | abpLocalization }}</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let task of tasksTable.data" class="task-row">
             <td>
-              <div class="d-flex flex-column">
-                <span class="text-black fw-bold mb-0">
-                  {{ task.title }}
-                  <nz-tag *ngIf="!task.isApproved" nzColor="error" class="ms-2 x-small">{{ 'TaskManagement::Proposal' | abpLocalization }}</nz-tag>
-                </span>
-                <small class="text-dark opacity-75 text-truncate" style="max-width: 200px;">{{ task.description }}</small>
-              </div>
+              <span class="text-black fw-bold">{{ task.title }}</span>
+              <i *ngIf="isOverdue(task.dueDate)" nz-icon nzType="warning" nzTheme="fill" class="text-danger ms-2" nz-tooltip [nzTooltipTitle]="'TaskManagement::OverdueWarning' | abpLocalization"></i>
             </td>
-            <td>
-              <nz-tag [nzColor]="getStatusColor(task.status)" class="rounded-pill border-0 fw-bold">{{ ('TaskManagement::' + getStatusKey(task.status)) | abpLocalization }}</nz-tag>
-            </td>
-            <td>
-              <div class="d-flex align-items-center" *ngIf="task.assignedUserName; else unassignedTpl">
-                <nz-avatar nzSize="small" [nzText]="task.assignedUserName[0]" class="bg-primary me-2"></nz-avatar>
-                <span class="text-black fw-medium small">{{ task.assignedUserName }}</span>
-              </div>
-              <ng-template #unassignedTpl>
-                <span class="text-muted small fst-italic">
-                  <i class="fas fa-user-slash me-1"></i> {{ 'TaskManagement::Unassigned' | abpLocalization }}
-                </span>
-              </ng-template>
-            </td>
-            <td>
-              <span class="small fw-bold" [class.text-danger]="isOverdue(task.dueDate)">
-                {{ task.dueDate | date:'dd/MM/yyyy HH:mm' }}
-              </span>
-            </td>
+            <td><nz-tag [nzColor]="getStatusColor(task.status)" class="rounded-pill fw-bold">{{ ('TaskManagement::' + getStatusKey(task.status)) | abpLocalization }}</nz-tag></td>
+            <td><span class="small fw-medium">{{ task.assignedUserName }}</span></td>
+            <td><span class="small fw-bold" [class.text-danger]="isOverdue(task.dueDate)">{{ task.dueDate | date:'dd/MM/yyyy HH:mm' }}</span></td>
             <td class="text-end">
-              <div class="row-actions">
-                <button *ngIf="!task.isApproved && hasApprovePermission" nz-button nzType="text" (click)="approveTask(task.id)" nz-tooltip [nzTooltipTitle]="'TaskManagement::Approve' | abpLocalization">
-                  <i nz-icon nzType="check-circle" class="text-success fs-5"></i>
-                </button>
-                <button nz-button nzType="text" (click)="editTask(task)"><i nz-icon nzType="edit" class="text-primary fs-5"></i></button>
-                <button *ngIf="hasDeletePermission || (task.status === taskStatus.New && task.creatorId === currentUser.id)" nz-button nzType="text" nz-popconfirm [nzPopconfirmTitle]="'TaskManagement::AreYouSureToDelete' | abpLocalization" (nzOnConfirm)="delete(task.id)">
-                  <i nz-icon nzType="delete" class="text-danger fs-5"></i>
-                </button>
-              </div>
+              <button nz-button nzType="text" (click)="editTask(task)"><i nz-icon nzType="edit" class="text-primary fs-5"></i></button>
+              <button *ngIf="task.status !== taskStatus.Completed" nz-button nzType="text" (click)="confirmDelete(task.id)"><i nz-icon nzType="delete" class="text-danger fs-5"></i></button>
             </td>
           </tr>
         </tbody>
@@ -137,75 +90,96 @@
   </div>
 </div>
 
-<nz-drawer [nzVisible]="isModalOpen" [nzTitle]="drawerTitle" [nzWidth]="400" nzPlacement="right" (nzOnClose)="handleCancel()" [nzFooter]="drawerFooter">
+<nz-drawer [nzVisible]="isModalOpen" [nzTitle]="drawerTitle" [nzWidth]="450" nzPlacement="right" (nzOnClose)="handleCancel()" [nzFooter]="drawerFooter">
   <ng-template #drawerTitle>
-    <span class="fw-bold text-black"><i nz-icon nzType="form" class="text-primary me-2"></i> 
-      {{ (isEditMode ? ('TaskManagement::Update' | abpLocalization) : ('TaskManagement::Create' | abpLocalization)) }}
-    </span>
+    <span class="fw-bold text-black"><i nz-icon nzType="form" class="text-primary me-2"></i> {{ (isEditMode ? ('TaskManagement::Update' | abpLocalization) : ('TaskManagement::Create' | abpLocalization)) }}</span>
   </ng-template>
   <ng-container *nzDrawerContent>
     <form nz-form [formGroup]="form" nzLayout="vertical">
       <nz-form-item class="mb-2">
-        <nz-form-label nzRequired class="text-black fw-bold">{{ 'TaskManagement::Title' | abpLocalization }}</nz-form-label>
-        <nz-form-control><input nz-input formControlName="title" [placeholder]="'TaskManagement::TaskTitlePlaceholder' | abpLocalization" /></nz-form-control>
+        <nz-form-label nzRequired>{{ 'TaskManagement::Title' | abpLocalization }}</nz-form-label>
+        <nz-form-control><input nz-input formControlName="title" /></nz-form-control>
       </nz-form-item>
       <nz-form-item class="mb-2">
-        <nz-form-label class="text-black fw-bold">{{ 'TaskManagement::Description' | abpLocalization }}</nz-form-label>
-        <nz-form-control><textarea nz-input formControlName="description" rows="3" [placeholder]="'TaskManagement::DescriptionPlaceholder' | abpLocalization"></textarea></nz-form-control>
+        <nz-form-label>{{ 'TaskManagement::Description' | abpLocalization }}</nz-form-label>
+        <nz-form-control><textarea nz-input formControlName="description" rows="3"></textarea></nz-form-control>
       </nz-form-item>
       <nz-form-item class="mb-2">
-        <nz-form-label nzRequired class="text-black fw-bold">{{ 'TaskManagement::Status' | abpLocalization }}</nz-form-label>
+        <nz-form-label nzRequired>{{ 'TaskManagement::Status' | abpLocalization }}</nz-form-label>
         <nz-form-control>
           <nz-select formControlName="status" class="w-100">
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:New' | abpLocalization" [nzValue]="taskStatus.New"></nz-option>
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:InProgress' | abpLocalization" [nzValue]="taskStatus.InProgress"></nz-option>
-            <nz-option [nzLabel]="'TaskManagement::Enum:TaskStatus:Completed' | abpLocalization" [nzValue]="taskStatus.Completed"></nz-option>
+            <nz-option *ngFor="let opt of [0,1,2]" [nzLabel]="('TaskManagement::Enum:TaskStatus:' + (opt === 0 ? 'New' : opt === 1 ? 'InProgress' : 'Completed')) | abpLocalization" [nzValue]="opt"></nz-option>
           </nz-select>
         </nz-form-control>
       </nz-form-item>
       <nz-form-item class="mb-2">
-        <nz-form-label class="text-black fw-bold">{{ 'TaskManagement::AssignedTo' | abpLocalization }}</nz-form-label>
+        <nz-form-label>{{ 'TaskManagement::AssignedTo' | abpLocalization }}</nz-form-label>
         <nz-form-control>
-          <nz-select formControlName="assignedUserId" nzAllowClear nzShowSearch class="w-100" [nzPlaceHolder]="'TaskManagement::SelectUser' | abpLocalization">
+          <nz-select formControlName="assignedUserIds" nzMode="multiple" nzShowSearch nzAllowClear class="w-100" [nzPlaceHolder]="'TaskManagement::SelectUser' | abpLocalization">
             <nz-option *ngFor="let user of users" [nzLabel]="user.userName" [nzValue]="user.id"></nz-option>
           </nz-select>
         </nz-form-control>
       </nz-form-item>
       <nz-form-item class="mb-2">
-        <nz-form-label class="text-black fw-bold">{{ 'TaskManagement::DueDate' | abpLocalization }}</nz-form-label>
-        <nz-form-control>
-          <nz-date-picker formControlName="dueDate" nzShowTime nzFormat="yyyy-MM-dd HH:mm" class="w-100"></nz-date-picker>
-        </nz-form-control>
+        <nz-form-label>{{ 'TaskManagement::DueDate' | abpLocalization }}</nz-form-label>
+        <nz-form-control><nz-date-picker formControlName="dueDate" nzShowTime nzFormat="yyyy-MM-dd HH:mm" class="w-100"></nz-date-picker></nz-form-control>
       </nz-form-item>
     </form>
   </ng-container>
   <ng-template #drawerFooter>
-    <div class="text-end">
-      <button nz-button nzType="default" (click)="handleCancel()" class="me-2 rounded-pill">{{ 'TaskManagement::Cancel' | abpLocalization }}</button>
-      <button nz-button nzType="primary" (click)="save()" [disabled]="form.invalid || form.disabled" [nzLoading]="saving" class="rounded-pill">
-        {{ 'TaskManagement::Save' | abpLocalization }}
-      </button>
+    <div class="d-flex justify-content-between">
+      <div *ngIf="isEditMode && !form.get('isApproved')?.value && hasApprovePermission">
+        <button nz-button nzType="primary" (click)="approveTask(selectedTaskId)" class="me-2">{{ 'TaskManagement::Approve' | abpLocalization }}</button>
+        <button nz-button nzDanger (click)="rejectTask(selectedTaskId)">{{ 'TaskManagement::Reject' | abpLocalization }}</button>
+      </div>
+      <div class="ms-auto">
+        <button nz-button (click)="handleCancel()" class="me-2">{{ 'TaskManagement::Cancel' | abpLocalization }}</button>
+        <button nz-button nzType="primary" (click)="save()" [disabled]="form.invalid || form.disabled">{{ 'TaskManagement::Save' | abpLocalization }}</button>
+      </div>
     </div>
   </ng-template>
 </nz-drawer>
 
-<nz-modal [nzVisible]="isOverdueModalOpen" [nzTitle]="'TaskManagement::OVERDUE TASKS' | abpLocalization" (nzOnCancel)="isOverdueModalOpen = false" [nzFooter]="null" nzWidth="700px">
+<nz-modal [(nzVisible)]="isPendingModalOpen" [nzTitle]="'TaskManagement::PENDING_APPROVAL' | abpLocalization" (nzOnCancel)="isPendingModalOpen = false" [nzFooter]="null" nzWidth="800px">
   <ng-container *nzModalContent>
-    <nz-table #overdueTable [nzData]="overdueTasks" nzSize="small" [nzFrontPagination]="true">
+    <nz-table #pendingTable [nzData]="pendingTasks" nzSize="small">
       <thead>
-        <tr>
-          <th>{{ 'TaskManagement::Title' | abpLocalization }}</th>
-          <th>{{ 'TaskManagement::AssignedTo' | abpLocalization }}</th>
-          <th>{{ 'TaskManagement::DueDate' | abpLocalization }}</th>
-        </tr>
+        <tr><th>{{ 'TaskManagement::Title' | abpLocalization }}</th><th>{{ 'TaskManagement::Creator' | abpLocalization }}</th><th>{{ 'TaskManagement::Action' | abpLocalization }}</th></tr>
       </thead>
       <tbody>
-        <tr *ngFor="let task of overdueTable.data">
-          <td class="text-danger fw-bold">{{ task.title }}</td>
-          <td>{{ task.assignedUserName || ('TaskManagement::Unassigned' | abpLocalization) }}</td>
-          <td class="text-danger">{{ task.dueDate | date:'dd/MM/yyyy HH:mm' }}</td>
+        <tr *ngFor="let task of pendingTable.data" class="cursor-pointer" (click)="editTask(task)">
+          <td>
+            <span class="fw-bold text-primary">{{ task.title }}</span>
+            <nz-tag *ngIf="task.isRejected" nzColor="error" class="ms-2">
+                <i nz-icon nzType="close-circle"></i> {{ 'TaskManagement::Rejected' | abpLocalization }}
+            </nz-tag>
+          </td>
+          <td>{{ task.assignedUserName }}</td>
+          <td><button nz-button nzType="link">{{ 'TaskManagement::ViewDetail' | abpLocalization }}</button></td>
         </tr>
       </tbody>
     </nz-table>
   </ng-container>
+</nz-modal>
+
+<nz-modal [(nzVisible)]="isReasonModalOpen" [nzTitle]="'TaskManagement::DeleteReasonTitle' | abpLocalization" (nzOnOk)="deleteTaskWithReason()" (nzOnCancel)="isReasonModalOpen = false">
+  <ng-container *nzModalContent>
+    <p class="fw-bold">{{ 'TaskManagement::PleaseInputReason' | abpLocalization }}</p>
+    <textarea nz-input [(ngModel)]="deletionReason" rows="4" [placeholder]="'TaskManagement::ReasonPlaceholder' | abpLocalization"></textarea>
+  </ng-container>
+</nz-modal>
+
+<nz-modal [nzVisible]="isOverdueModalOpen" [nzTitle]="'TaskManagement::OVERDUE_TASKS' | abpLocalization" (nzOnCancel)="isOverdueModalOpen = false" [nzFooter]="null" nzWidth="700px">
+    <ng-container *nzModalContent>
+      <nz-table #overdueTable [nzData]="overdueTasks" nzSize="small">
+        <thead><tr><th>{{ 'TaskManagement::Title' | abpLocalization }}</th><th>{{ 'TaskManagement::AssignedTo' | abpLocalization }}</th><th>{{ 'TaskManagement::DueDate' | abpLocalization }}</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let task of overdueTable.data">
+            <td class="text-danger fw-bold">{{ task.title }}</td>
+            <td>{{ task.assignedUserName || ('TaskManagement::Unassigned' | abpLocalization) }}</td>
+            <td class="text-danger">{{ task.dueDate | date:'dd/MM/yyyy HH:mm' }}</td>
+          </tr>
+        </tbody>
+      </nz-table>
+    </ng-container>
 </nz-modal>

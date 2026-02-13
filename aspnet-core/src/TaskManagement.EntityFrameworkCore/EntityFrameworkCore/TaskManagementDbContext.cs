@@ -100,5 +100,31 @@ public class TaskManagementDbContext :
             // Quan hệ N-1: Nhiều Task thuộc về 1 Project
             b.HasOne<Project>().WithMany().HasForeignKey(x => x.ProjectId).IsRequired();
         });
+
+        // 4. Cấu hình TaskAssignment (Khóa chính kết hợp và quan hệ)
+        builder.Entity<TaskAssignment>(b =>
+        {
+            // Định nghĩa bảng trung gian
+            b.ToTable(TaskManagementConsts.DbTablePrefix + "TaskAssignments", TaskManagementConsts.DbSchema);
+
+            // Cấu hình chuẩn ABP
+            b.ConfigureByConvention(); 
+
+            // QUAN TRỌNG: Định nghĩa Khóa chính hợp thành từ 2 ID
+            b.HasKey(x => new { x.TaskId, x.UserId });
+
+            // Cấu hình quan hệ (Optional nhưng nên có để dữ liệu chặt chẽ)
+            b.HasOne<AppTask>().WithMany(x => x.Assignments).HasForeignKey(x => x.TaskId).IsRequired();
+        });
+
+        //5 Cấu hình AppTask để làm cho cột DeletionReason không bắt buộc
+        builder.Entity<AppTask>(b =>
+        {
+            b.ToTable(TaskManagementConsts.DbTablePrefix + "Tasks", TaskManagementConsts.DbSchema);
+            b.ConfigureByConvention();
+            
+            // THÊM: Cấu hình cột này không bắt buộc (Nullable) để fix lỗi INSERT
+            b.Property(x => x.DeletionReason).IsRequired(false).HasMaxLength(500); 
+        });
     }
 }

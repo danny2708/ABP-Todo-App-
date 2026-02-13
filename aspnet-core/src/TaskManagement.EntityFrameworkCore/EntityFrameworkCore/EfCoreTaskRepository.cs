@@ -15,50 +15,65 @@ namespace TaskManagement.Tasks
         public EfCoreTaskRepository(IDbContextProvider<TaskManagementDbContext> dbContextProvider)
             : base(dbContextProvider) { }
 
+        // Lấy chi tiết Task kèm theo danh sách Assignments để tránh lỗi Lazy Loading
         public async Task<AppTask> GetTaskByIdAsync(Guid id) 
-            => await (await GetDbSetAsync()).FirstOrDefaultAsync(x => x.Id == id);
+        {
+            var dbSet = await GetDbSetAsync();
+            return await dbSet
+                .Include(x => x.Assignments) 
+                .FirstOrDefaultAsync(x => x.Id == id);
+        }
 
         public async Task<List<AppTask>> GetListAsync(
             int skipCount, 
             int maxResultCount, 
             string sorting, 
-            Guid? projectId = null, // Update cấu trúc mới
+            Guid? projectId = null, 
             string? filter = null, 
             TaskStatus? status = null, 
             Guid? assignedUserId = null,
-            bool? isApproved = null) // Update cấu trúc mới
+            bool? isApproved = null) 
         {
             var dbSet = await GetDbSetAsync();
             return await dbSet
-                .WhereIf(projectId.HasValue, x => x.ProjectId == projectId) // Lọc theo Project
-                .WhereIf(isApproved.HasValue, x => x.IsApproved == isApproved) // Lọc trạng thái phê duyệt
-                .WhereIf(!string.IsNullOrWhiteSpace(filter), x => x.Title.Contains(filter) || x.Description.Contains(filter))
+                .Include(x => x.Assignments) // Eager loading cho quan hệ nhiều người
+                .WhereIf(projectId.HasValue, x => x.ProjectId == projectId)
+                .WhereIf(isApproved.HasValue, x => x.IsApproved == isApproved)
+                .WhereIf(!string.IsNullOrWhiteSpace(filter), x => 
+                    x.Title.Contains(filter) || (x.Description != null && x.Description.Contains(filter)))
                 .WhereIf(status.HasValue, x => x.Status == status)
-                .WhereIf(assignedUserId.HasValue, x => x.AssignedUserId == assignedUserId)
+                // FIX LỖI: Kiểm tra User có tồn tại trong danh sách Assignments hay không
+                .WhereIf(assignedUserId.HasValue, x => 
+                    x.Assignments.Any(a => a.UserId == assignedUserId))
                 .OrderBy(string.IsNullOrWhiteSpace(sorting) ? "CreationTime desc" : sorting)
                 .PageBy(skipCount, maxResultCount)
                 .ToListAsync();
         }
 
         public async Task<long> GetTotalCountAsync(
-            Guid? projectId = null, // Update cấu trúc mới
+            Guid? projectId = null, 
             string? filter = null, 
             TaskStatus? status = null, 
             Guid? assignedUserId = null,
-            bool? isApproved = null) // Update cấu trúc mới
+            bool? isApproved = null) 
         {
             var dbSet = await GetDbSetAsync();
             return await dbSet
                 .WhereIf(projectId.HasValue, x => x.ProjectId == projectId)
                 .WhereIf(isApproved.HasValue, x => x.IsApproved == isApproved)
-                .WhereIf(!string.IsNullOrWhiteSpace(filter), x => x.Title.Contains(filter) || x.Description.Contains(filter))
+                .WhereIf(!string.IsNullOrWhiteSpace(filter), x => 
+                    x.Title.Contains(filter) || (x.Description != null && x.Description.Contains(filter)))
                 .WhereIf(status.HasValue, x => x.Status == status)
-                .WhereIf(assignedUserId.HasValue, x => x.AssignedUserId == assignedUserId)
+                // FIX LỖI: Logic tương tự cho hàm đếm
+                .WhereIf(assignedUserId.HasValue, x => 
+                    x.Assignments.Any(a => a.UserId == assignedUserId))
                 .LongCountAsync();
         }
 
         public async Task<AppTask> CreateTaskAsync(AppTask task) => await InsertAsync(task, autoSave: true);
+        
         public async Task<AppTask> UpdateTaskAsync(AppTask task) => await UpdateAsync(task, autoSave: true);
+        
         public async Task DeleteTaskAsync(Guid id) => await DeleteAsync(id, autoSave: true);
     }
 }

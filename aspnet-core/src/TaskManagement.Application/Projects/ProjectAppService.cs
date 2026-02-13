@@ -34,11 +34,21 @@ public class ProjectAppService : ApplicationService, IProjectAppService
 
     public async Task<ProjectDto> GetAsync(Guid id)
     {
-        var project = await _projectRepository.GetAsync(id);
+        var queryable = await _projectRepository.WithDetailsAsync(p => p.Members);
+        var project = await queryable.FirstOrDefaultAsync(p => p.Id == id);
+        
+        if (project == null) throw new UserFriendlyException(L["TaskManagement::ProjectNotFound"]);
+
+        // BẢO MẬT: Chặn xem chi tiết nếu không có quyền
+        await CheckProjectAccessAsync(project);
+
         var dto = ObjectMapper.Map<Project, ProjectDto>(project);
         
-        var manager = await _userRepository.GetAsync(project.ProjectManagerId);
-        dto.ProjectManagerName = manager.UserName;
+        var manager = await _userRepository.FindAsync(project.ProjectManagerId);
+        dto.ProjectManagerName = manager?.UserName ?? "Unknown";
+
+        // Gửi danh sách ID về để Frontend tự động tick chọn thành viên
+        dto.MemberIds = project.Members.Select(m => m.UserId).ToList();
         
         return dto;
     }
@@ -46,12 +56,15 @@ public class ProjectAppService : ApplicationService, IProjectAppService
     public async Task<PagedResultDto<ProjectDto>> GetListAsync(PagedAndSortedResultRequestDto input)
     {
         var currentUserId = CurrentUser.Id;
-        var queryable = await _projectRepository.GetQueryableAsync();
+        var queryable = await _projectRepository.WithDetailsAsync(p => p.Members);
 
-        // PHÂN QUYỀN: User chỉ thấy dự án mình tham gia, PM thấy dự án mình quản lý, Admin thấy hết
-        if (!await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create)) // Giả sử quyền Create là của Admin/PM
+        // PHÂN QUYỀN CỨNG: PM chỉ thấy dự án mình quản lý, Nhân viên thấy dự án tham gia
+        bool isAdmin = await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create);
+        if (!isAdmin)
         {
-            queryable = queryable.Where(p => p.Members.Any(m => m.UserId == currentUserId) || p.ProjectManagerId == currentUserId);
+            queryable = queryable.Where(p => 
+                p.ProjectManagerId == currentUserId || 
+                p.Members.Any(m => m.UserId == currentUserId));
         }
 
         var totalCount = await AsyncExecuter.CountAsync(queryable);
@@ -61,7 +74,6 @@ public class ProjectAppService : ApplicationService, IProjectAppService
 
         var projectDtos = ObjectMapper.Map<List<Project>, List<ProjectDto>>(projects);
 
-        // TÍNH TOÁN TIẾN ĐỘ VÀ THÔNG TIN PHỤ
         foreach (var dto in projectDtos)
         {
             var tasks = await _taskRepository.GetListAsync(t => t.ProjectId == dto.Id && t.IsApproved);
@@ -76,7 +88,7 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         return new PagedResultDto<ProjectDto>(totalCount, projectDtos);
     }
 
-    [Authorize(TaskManagementPermissions.Tasks.Create)] // Chỉ Admin mới có quyền tạo dự án
+    [Authorize(TaskManagementPermissions.Tasks.Create)]
     public async Task<ProjectDto> CreateAsync(CreateUpdateProjectDto input)
     {
         var project = new Project(GuidGenerator.Create(), input.Name, input.ProjectManagerId)
@@ -84,60 +96,72 @@ public class ProjectAppService : ApplicationService, IProjectAppService
             Description = input.Description
         };
 
-        // Thêm các thành viên vào dự án
         foreach (var userId in input.MemberIds)
         {
             project.Members.Add(new ProjectMember { ProjectId = project.Id, UserId = userId });
         }
 
-        await _projectRepository.InsertAsync(project);
+        await _projectRepository.InsertAsync(project, autoSave: true);
         return ObjectMapper.Map<Project, ProjectDto>(project);
     }
 
     public async Task<ProjectDto> UpdateAsync(Guid id, CreateUpdateProjectDto input)
     {
-        var project = await _projectRepository.GetAsync(id);
+        var queryable = await _projectRepository.WithDetailsAsync(p => p.Members);
+        var project = await queryable.FirstOrDefaultAsync(p => p.Id == id);
         
-        // KIỂM TRA QUYỀN: Chỉ Admin hoặc PM của chính dự án đó mới được sửa
-        if (project.ProjectManagerId != CurrentUser.Id && !await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create))
+        if (project == null) throw new UserFriendlyException(L["TaskManagement::ProjectNotFound"]);
+
+        // CHỈ PM CỦA DỰ ÁN HOẶC ADMIN MỚI ĐƯỢC SỬA
+        bool isAdmin = await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create);
+        if (!isAdmin && project.ProjectManagerId != CurrentUser.Id)
         {
-            throw new UserFriendlyException("Bạn không có quyền chỉnh sửa dự BW án này.");
+            throw new UserFriendlyException(L["TaskManagement::NoPermissionToEditProject"]);
         }
 
         project.Name = input.Name;
         project.Description = input.Description;
         project.ProjectManagerId = input.ProjectManagerId;
 
-        // Cập nhật danh sách thành viên (xóa cũ thêm mới)
         project.Members.Clear();
         foreach (var userId in input.MemberIds)
         {
             project.Members.Add(new ProjectMember { ProjectId = project.Id, UserId = userId });
         }
 
-        await _projectRepository.UpdateAsync(project);
+        await _projectRepository.UpdateAsync(project, autoSave: true);
         return ObjectMapper.Map<Project, ProjectDto>(project);
     }
 
+    [Authorize(TaskManagementPermissions.Tasks.Create)]
     public async Task DeleteAsync(Guid id)
     {
         await _projectRepository.DeleteAsync(id);
     }
 
-    // Tìm kiếm nhân viên tham gia dự án    
     public async Task<ListResultDto<UserLookupDto>> GetMembersLookupAsync(Guid projectId)
     {
-        var project = await _projectRepository.WithDetailsAsync(p => p.Members).Result.FirstOrDefaultAsync(p => p.Id == projectId);
-        if (project == null) throw new UserFriendlyException("Dự án không tồn tại.");
+        var queryable = await _projectRepository.WithDetailsAsync(p => p.Members);
+        var project = await queryable.FirstOrDefaultAsync(p => p.Id == projectId);
+        if (project == null) throw new UserFriendlyException(L["TaskManagement::ProjectNotFound"]);
 
-        // Lấy ID của PM và tất cả Members
+        await CheckProjectAccessAsync(project);
+
         var memberIds = project.Members.Select(m => m.UserId).ToList();
         memberIds.Add(project.ProjectManagerId); 
 
         var users = await _userRepository.GetListAsync(u => memberIds.Contains(u.Id));
-        
-        return new ListResultDto<UserLookupDto>(
-            users.Select(u => new UserLookupDto { Id = u.Id, UserName = u.UserName }).ToList()
-        );
+        return new ListResultDto<UserLookupDto>(users.Select(u => new UserLookupDto { Id = u.Id, UserName = u.UserName }).ToList());
+    }
+
+    private async Task CheckProjectAccessAsync(Project project)
+    {
+        bool isAdmin = await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Create);
+        if (isAdmin) return;
+
+        if (project.ProjectManagerId != CurrentUser.Id && !project.Members.Any(m => m.UserId == CurrentUser.Id))
+        {
+            throw new UserFriendlyException(L["TaskManagement::NoPermissionToAccessProject"]);
+        }
     }
 }

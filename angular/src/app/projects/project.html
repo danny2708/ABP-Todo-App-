@@ -65,7 +65,7 @@
            (nzOnClose)="handleCancel()" [nzFooter]="drawerFooter">
   <ng-template #drawerTitle>
     <span class="fw-bold text-black"><i nz-icon nzType="form" class="text-primary me-2"></i> 
-      {{ (isEditMode ? 'TaskManagement::Update' : 'TaskManagement::Create') | abpLocalization }}
+      {{ (isEditMode ? ('TaskManagement::Update' | abpLocalization) : ('TaskManagement::Create' | abpLocalization)) }}
     </span>
   </ng-template>
 
