@@ -207,7 +207,7 @@ namespace TaskManagement.Tasks
         public async Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId)
         {
             var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
-            var tasks = await queryable.Where(t => t.ProjectId == projectId && t.DueDate < Clock.Now && t.Status != TaskStatus.Completed).ToListAsync();
+            var tasks = await queryable.Where(t => t.ProjectId == projectId && t.DueDate < Clock.Now).ToListAsync();
             
             var dtos = ObjectMapper.Map<List<AppTask>, List<TaskDto>>(tasks);
 

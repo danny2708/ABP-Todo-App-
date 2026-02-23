@@ -17,6 +17,9 @@ export const environment = {
     baseUrl,
     name: 'TaskManagement',
   },
+  localization: {
+    defaultResourceName: 'TaskManagement', 
+  },
   oAuthConfig,
   apis: {
     default: {

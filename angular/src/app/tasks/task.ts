@@ -3,7 +3,7 @@ import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
-import { ListService, PagedResultDto, CoreModule, PermissionService, ConfigStateService, CurrentUserDto } from '@abp/ng.core';
+import { LocalizationService, ListService, PagedResultDto, CoreModule, PermissionService, ConfigStateService, CurrentUserDto } from '@abp/ng.core';
 import { ThemeSharedModule } from '@abp/ng.theme.shared';
 
 import { NzTableModule } from 'ng-zorro-antd/table';
@@ -21,6 +21,7 @@ import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox'; // Thêm để dùng checkbox lọc
 
 import { TaskService } from '../proxy/tasks/task.service';
 import { TaskDto, TaskStatus, UserLookupDto } from '../proxy/tasks/models';
@@ -37,7 +38,8 @@ import { Router, ActivatedRoute } from '@angular/router';
     CommonModule, FormsModule, ReactiveFormsModule, CoreModule, ThemeSharedModule,
     NzDrawerModule, NzTableModule, NzTagModule, NzButtonModule, NzIconModule,
     NzModalModule, NzFormModule, NzInputModule, NzSelectModule, NzProgressModule,
-    NzToolTipModule, NzAvatarModule, NzDatePickerModule, NzSpinModule, NzDividerModule
+    NzToolTipModule, NzAvatarModule, NzDatePickerModule, NzSpinModule, NzDividerModule,
+    NzCheckboxModule
   ],
 })
 export class TaskComponent implements OnInit {
@@ -50,6 +52,7 @@ export class TaskComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private permissionService = inject(PermissionService);
   private configState = inject(ConfigStateService);
+  private localizationService = inject(LocalizationService);
 
   taskData: PagedResultDto<TaskDto> = { items: [], totalCount: 0 };
   overdueTasks: TaskDto[] = [];
@@ -83,6 +86,9 @@ export class TaskComponent implements OnInit {
   completedCount = 0;
   pendingCount = 0;
 
+  // BỘ LỌC CHO MODAL QUÁ HẠN
+  showOnlyUncompletedOverdue = true;
+
   form!: FormGroup;
 
   ngOnInit(): void {
@@ -101,12 +107,19 @@ export class TaskComponent implements OnInit {
     this.loadPendingTasks();
   }
 
+  // Getter để lọc dữ liệu hiển thị trên bảng Overdue
+  get filteredOverdueTasks() {
+    if (this.showOnlyUncompletedOverdue) {
+      return this.overdueTasks.filter(t => t.status !== TaskStatus.Completed);
+    }
+    return this.overdueTasks;
+  }
+
   goBack(): void { this.router.navigate(['/tasks']); }
 
   private loadProjectInfo(): void {
     this.projectService.get(this.projectId).subscribe(res => {
         this.projectName = res.name;
-        // FIX: Xử lý cả trường hợp trả về decimal (0.2) và số nguyên (20)
         this.projectProgress = res.progress > 0 && res.progress <= 1 
             ? Math.round(res.progress * 100) 
             : Math.round(res.progress || 0);
@@ -135,7 +148,6 @@ export class TaskComponent implements OnInit {
     });
   }
 
-  // Khôi phục logic sắp xếp server-side
   onSort(sort: { key: string; value: string | null }): void {
     if (sort.value) {
       this.sorting = `${sort.key} ${sort.value === 'descend' ? 'DESC' : 'ASC'}`;
@@ -218,7 +230,7 @@ export class TaskComponent implements OnInit {
     if (!task) return;
 
     if (!this.canDeleteTask(task)) {
-        this.message.error(this.l('TaskManagement::NoPermissionToDeleteApprovedTask'));
+        this.message.error(this.l('::NoPermissionToDeleteApprovedTask'));
         return;
     }
 
@@ -229,11 +241,11 @@ export class TaskComponent implements OnInit {
 
   deleteTaskWithReason(): void {
     if (!this.deletionReason.trim()) {
-        this.message.warning(this.l('TaskManagement::ReasonRequired'));
+        this.message.warning(this.l('::ReasonRequired'));
         return;
     }
     this.taskService.delete(this.selectedTaskId!, this.deletionReason).subscribe(() => {
-        this.message.success(this.l('TaskManagement::DeletedSuccess'));
+        this.message.success(this.l('::DeletedSuccess'));
         this.isReasonModalOpen = false;
         this.refreshData();
         this.isPendingModalOpen = false;    
@@ -242,7 +254,7 @@ export class TaskComponent implements OnInit {
 
   approveTask(id: string): void {
     this.taskService.approve(id).subscribe(() => {
-      this.message.success(this.l('TaskManagement::ApprovedSuccess'));
+      this.message.success(this.l('::ApprovedSuccess'));
       this.refreshData();
       this.isPendingModalOpen = false; this.isModalOpen = false;
     });
@@ -250,7 +262,7 @@ export class TaskComponent implements OnInit {
 
   rejectTask(id: string): void {
     this.taskService.reject(id).subscribe(() => {
-      this.message.success(this.l('TaskManagement::RejectedSuccess'));
+      this.message.success(this.l('::RejectedSuccess'));
       this.refreshData();
       this.isPendingModalOpen = false; this.isModalOpen = false;
     });
@@ -269,7 +281,10 @@ export class TaskComponent implements OnInit {
     const request = this.isEditMode && this.selectedTaskId ? this.taskService.update(this.selectedTaskId, formData) : this.taskService.create(formData);
     request.subscribe({
       next: () => {
-        this.message.success(this.l('TaskManagement::SaveSuccess'));
+        // Sử dụng service chuẩn để hiện tiếng Việt
+        const message = this.localizationService.instant('::SaveSuccess');    
+        this.message.success(message);
+        
         this.isModalOpen = false;
         this.refreshData();
         this.saving = false;
@@ -289,5 +304,8 @@ export class TaskComponent implements OnInit {
     return `Enum:TaskStatus:${(TaskStatus as any)[status as number]}`;
   }
 
-  private l(key: string): string { return key; }
+  // Cập nhật hàm dịch để dùng LocalizationService thật
+  private l(key: string): string { 
+    return this.localizationService.instant(key); 
+  }
 }

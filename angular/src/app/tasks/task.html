@@ -198,15 +198,38 @@
     </ng-container>
   </nz-modal>
   
-  <nz-modal [nzVisible]="isOverdueModalOpen" [nzTitle]="'TaskManagement::OVERDUE_TASKS' | abpLocalization" (nzOnCancel)="isOverdueModalOpen = false" [nzFooter]="null" nzWidth="700px">
-      <ng-container *nzModalContent>
-        <nz-table #overdueTable [nzData]="overdueTasks" nzSize="small">
-          <thead><tr><th>{{ 'TaskManagement::Title' | abpLocalization }}</th><th>{{ 'TaskManagement::AssignedTo' | abpLocalization }}</th><th>{{ 'TaskManagement::DueDate' | abpLocalization }}</th></tr></thead>
+  <nz-modal [(nzVisible)]="isOverdueModalOpen" [nzTitle]="overdueTitle" (nzOnCancel)="isOverdueModalOpen = false" [nzFooter]="null" nzWidth="850px">
+    <ng-template #overdueTitle>
+        <div class="d-flex justify-content-between align-items-center w-100 pe-4">
+          <span class="fw-bold text-danger"><i nz-icon nzType="warning" nzTheme="fill" class="me-2"></i> {{ 'TaskManagement::OVERDUE_TASKS' | abpLocalization }}</span>
+          <label nz-checkbox [(ngModel)]="showOnlyUncompletedOverdue">
+            <span class="small fw-bold">{{ 'TaskManagement::ShowOnlyUncompleted' | abpLocalization }}</span>
+          </label>
+        </div>
+    </ng-template>
+
+    <ng-container *nzModalContent>
+        <nz-table #overdueTable [nzData]="filteredOverdueTasks" nzSize="small" [nzBordered]="true">
+          <thead>
+            <tr>
+              <th>{{ 'TaskManagement::Title' | abpLocalization }}</th>
+              <th>{{ 'TaskManagement::Status' | abpLocalization }}</th> <th>{{ 'TaskManagement::AssignedTo' | abpLocalization }}</th>
+              <th>{{ 'TaskManagement::DueDate' | abpLocalization }}</th>
+            </tr>
+          </thead>
           <tbody>
             <tr *ngFor="let task of overdueTable.data">
-              <td class="text-danger fw-bold">{{ task.title }}</td>
+              <td class="fw-bold" [class.text-danger]="task.status !== taskStatus.Completed">
+                {{ task.title }}
+                <i *ngIf="task.status === taskStatus.Completed" nz-icon nzType="check-circle" nzTheme="fill" class="text-success ms-1"></i>
+              </td>
+              <td>
+                <nz-tag [nzColor]="getStatusColor(task.status)" class="rounded-pill">
+                  {{ ('TaskManagement::' + getStatusKey(task.status)) | abpLocalization }}
+                </nz-tag>
+              </td>
               <td>{{ task.assignedUserName || ('TaskManagement::Unassigned' | abpLocalization) }}</td>
-              <td class="text-danger">{{ task.dueDate | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="text-danger fw-medium">{{ task.dueDate | date:'dd/MM/yyyy HH:mm' }}</td>
             </tr>
           </tbody>
         </nz-table>

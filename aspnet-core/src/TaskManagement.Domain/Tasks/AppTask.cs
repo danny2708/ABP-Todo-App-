@@ -8,7 +8,7 @@ namespace TaskManagement.Tasks
     public class AppTask : FullAuditedAggregateRoot<Guid>
     {
         public string Title { get; set; } = default!;
-        public string Description { get; set; }
+        public string? Description { get; set; }
         public TaskStatus Status { get; set; }
         
         // Thuộc dự án nào?
