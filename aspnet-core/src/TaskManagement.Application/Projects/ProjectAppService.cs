@@ -1,3 +1,4 @@
+// aspnet-core\src\TaskManagement.Application\Projects\ProjectAppService.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,7 +23,7 @@ public class ProjectAppService : ApplicationService, IProjectAppService
     private readonly IRepository<Project, Guid> _projectRepository;
     private readonly IRepository<Tasks.AppTask, Guid> _taskRepository;
     private readonly IRepository<IdentityUser, Guid> _userRepository;
-    private readonly IdentityUserManager _userManager; // Dùng để lọc Role PM
+    private readonly IdentityUserManager _userManager;
 
     public ProjectAppService(
         IRepository<Project, Guid> projectRepository,
@@ -40,16 +41,16 @@ public class ProjectAppService : ApplicationService, IProjectAppService
     {
         var queryable = await _projectRepository.WithDetailsAsync(p => p.Members);
         var project = await queryable.FirstOrDefaultAsync(p => p.Id == id);
-        if (project == null) throw new UserFriendlyException(L["TaskManagement::ProjectNotFound"]);
+        
+        if (project == null) 
+            throw new UserFriendlyException(L["TaskManagement::ProjectNotFound"]);
 
         await CheckProjectAccessAsync(project);
+        
         var dto = ObjectMapper.Map<Project, ProjectDto>(project);
         
-        // FIX: Tính toán tiến độ ngay tại đây để Detail Page hiển thị đúng %
-        var tasks = await _taskRepository.GetListAsync(t => t.ProjectId == id && t.IsApproved);
-        dto.TaskCount = tasks.Count;
-        dto.CompletedTaskCount = tasks.Count(t => t.Status == Tasks.TaskStatus.Completed);
-        dto.Progress = dto.TaskCount > 0 ? (float)dto.CompletedTaskCount / dto.TaskCount * 100 : 0;
+        // SỬ DỤNG HÀM TÍNH TOÁN RIÊNG
+        await CalculateProjectStatsAsync(dto);
 
         var manager = await _userRepository.FindAsync(project.ProjectManagerId);
         dto.ProjectManagerName = manager?.UserName ?? "Unknown";
@@ -61,14 +62,13 @@ public class ProjectAppService : ApplicationService, IProjectAppService
     public async Task<PagedResultDto<ProjectDto>> GetListAsync(GetProjectsInput input)
     {
         var currentUserId = CurrentUser.Id;
-        // Đảm bảo nạp chi tiết Members để có dữ liệu đếm thành viên
         var queryable = await _projectRepository.WithDetailsAsync(p => p.Members);
 
-        // 1. FIX LỖI TÌM KIẾM: Áp dụng bộ lọc từ thanh search
+        // 1. Áp dụng bộ lọc tìm kiếm
         queryable = queryable.WhereIf(!string.IsNullOrWhiteSpace(input.FilterText), 
             x => x.Name.Contains(input.FilterText) || (x.Description != null && x.Description.Contains(input.FilterText)));
 
-        // 2. PHÂN QUYỀN TÀNG HÌNH: Nhân viên/PM chỉ thấy dự án thuộc quyền hạn
+        // 2. Phân quyền truy cập
         bool isAdmin = await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Projects.Create);
         if (!isAdmin)
         {
@@ -88,19 +88,13 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         {
             var projectEntity = projects.First(p => p.Id == dto.Id);
             
-            // Gán danh sách ID thành viên và TÍNH TOÁN SỐ LƯỢNG THÀNH VIÊN
+            // Gán thông tin thành viên
             dto.MemberIds = projectEntity.Members.Select(m => m.UserId).ToList();
-            dto.MemberCount = dto.MemberIds.Count; // Fix lỗi hiển thị số 0 trên thẻ dự án
+            dto.MemberCount = dto.MemberIds.Count;
 
-            // Tính toán số lượng Task và Tiến độ (Sử dụng cách tính theo đầu việc)
-            var tasks = await _taskRepository.GetListAsync(t => t.ProjectId == dto.Id && t.IsApproved);
-            dto.TaskCount = tasks.Count;
-            dto.CompletedTaskCount = tasks.Count(t => t.Status == Tasks.TaskStatus.Completed);
+            // SỬ DỤNG HÀM TÍNH TOÁN RIÊNG THEO TRỌNG SỐ
+            await CalculateProjectStatsAsync(dto);
             
-            // Tiến độ đồng bộ với thẻ bên ngoài (Ví dụ: 20%)
-            dto.Progress = dto.TaskCount > 0 ? (float)dto.CompletedTaskCount / dto.TaskCount * 100 : 0;
-            
-            // Lấy tên người quản lý
             var manager = await _userRepository.FindAsync(dto.ProjectManagerId);
             dto.ProjectManagerName = manager?.UserName;
         }
@@ -108,7 +102,37 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         return new PagedResultDto<ProjectDto>(totalCount, projectDtos);
     }
 
-    // TÍNH NĂNG MỚI: Chỉ lấy danh sách người có Role "Project manager"
+    /// <summary>
+    /// Hàm riêng biệt để tính toán tiến độ dựa trên TRỌNG SỐ (Weight)
+    /// </summary>
+    private async Task CalculateProjectStatsAsync(ProjectDto dto)
+    {
+        var tasks = await _taskRepository.GetListAsync(t => t.ProjectId == dto.Id && t.IsApproved);
+        
+        dto.TaskCount = tasks.Count;
+        dto.CompletedTaskCount = tasks.Count(t => t.Status == Tasks.TaskStatus.Completed);
+
+        if (dto.TaskCount > 0)
+        {
+            // Tổng trọng số của tất cả các task
+            int totalWeight = tasks.Sum(t => t.Weight);
+            
+            // Tổng trọng số của các task đã xong
+            int completedWeight = tasks
+                .Where(t => t.Status == Tasks.TaskStatus.Completed)
+                .Sum(t => t.Weight);
+
+            // Tiến độ (%) = (Trọng số đã xong / Tổng trọng số) * 100
+            dto.Progress = totalWeight > 0 
+                ? (float)Math.Round((double)completedWeight / totalWeight * 100, 2) 
+                : 0;
+        }
+        else
+        {
+            dto.Progress = 0;
+        }
+    }
+
     public async Task<ListResultDto<UserLookupDto>> GetProjectManagersLookupAsync()
     {
         var pmUsers = await _userManager.GetUsersInRoleAsync("Project manager");

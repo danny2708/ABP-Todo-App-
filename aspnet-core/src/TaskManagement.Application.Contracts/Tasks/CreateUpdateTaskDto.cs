@@ -11,6 +11,7 @@ public class CreateUpdateTaskDto
         public string? Description { get; set; }
         public TaskStatus Status { get; set; }
         public DateTime? DueDate { get; set; }
+        public int Weight { get; set; } = 1;
         
         // Danh sách nhiều người nhận việc
         public List<Guid> AssignedUserIds { get; set; } = new();

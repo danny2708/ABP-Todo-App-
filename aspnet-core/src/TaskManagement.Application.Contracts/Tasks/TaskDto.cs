@@ -15,6 +15,8 @@ public class TaskDto : AuditedEntityDto<Guid>
     public bool IsRejected { get; set; }
     public string? DeletionReason { get; set; }
 
+    public int Weight { get; set; }
+
     // --- CẬP NHẬT ĐỂ SỬA LỖI CS1061 ---
     // Danh sách ID dùng để Frontend "tick sẵn" nhân viên trong ô chọn
     public List<Guid> AssignedUserIds { get; set; } = new(); 
