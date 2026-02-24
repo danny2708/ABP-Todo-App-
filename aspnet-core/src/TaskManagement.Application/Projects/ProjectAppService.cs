@@ -58,10 +58,10 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         return dto;
     }
 
-    // Cập nhật: Sử dụng GetProjectsInput để nhận tham số FilterText
     public async Task<PagedResultDto<ProjectDto>> GetListAsync(GetProjectsInput input)
     {
         var currentUserId = CurrentUser.Id;
+        // Đảm bảo nạp chi tiết Members để có dữ liệu đếm thành viên
         var queryable = await _projectRepository.WithDetailsAsync(p => p.Members);
 
         // 1. FIX LỖI TÌM KIẾM: Áp dụng bộ lọc từ thanh search
@@ -87,13 +87,20 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         foreach (var dto in projectDtos)
         {
             var projectEntity = projects.First(p => p.Id == dto.Id);
+            
+            // Gán danh sách ID thành viên và TÍNH TOÁN SỐ LƯỢNG THÀNH VIÊN
             dto.MemberIds = projectEntity.Members.Select(m => m.UserId).ToList();
+            dto.MemberCount = dto.MemberIds.Count; // Fix lỗi hiển thị số 0 trên thẻ dự án
 
+            // Tính toán số lượng Task và Tiến độ (Sử dụng cách tính theo đầu việc)
             var tasks = await _taskRepository.GetListAsync(t => t.ProjectId == dto.Id && t.IsApproved);
             dto.TaskCount = tasks.Count;
             dto.CompletedTaskCount = tasks.Count(t => t.Status == Tasks.TaskStatus.Completed);
+            
+            // Tiến độ đồng bộ với thẻ bên ngoài (Ví dụ: 20%)
             dto.Progress = dto.TaskCount > 0 ? (float)dto.CompletedTaskCount / dto.TaskCount * 100 : 0;
             
+            // Lấy tên người quản lý
             var manager = await _userRepository.FindAsync(dto.ProjectManagerId);
             dto.ProjectManagerName = manager?.UserName;
         }

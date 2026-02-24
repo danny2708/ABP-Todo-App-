@@ -14,7 +14,7 @@ namespace TaskManagement.Projects
         public int CompletedTaskCount { get; set; }
         public float Progress { get; set; }
 
-        // MỚI: Danh sách ID để tick chọn thành viên
+        public int MemberCount { get; set; }
         public List<Guid> MemberIds { get; set; } = new();
     }
 }

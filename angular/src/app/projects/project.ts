@@ -1,9 +1,11 @@
-import { Component, OnInit, inject } from '@angular/core';
+// angular\src\app\projects\project.ts
+import { Component, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { ListService, PagedResultDto, CoreModule, PermissionService } from '@abp/ng.core';
+import { ListService, PagedResultDto, CoreModule, PermissionService, LocalizationService } from '@abp/ng.core';
 import { ThemeSharedModule } from '@abp/ng.theme.shared';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs'; // Thêm để quản lý subscription
 
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
@@ -34,7 +36,7 @@ import { TaskService } from '../proxy/tasks/task.service';
     NzInputModule, NzDrawerModule, NzFormModule, NzSelectModule, NzToolTipModule, NzSpinModule
   ],
 })
-export class ProjectComponent implements OnInit {
+export class ProjectComponent implements OnInit, OnDestroy {
   public readonly list = inject(ListService);
   private projectService = inject(ProjectService);
   private taskService = inject(TaskService);
@@ -42,10 +44,11 @@ export class ProjectComponent implements OnInit {
   private router = inject(Router);
   private message = inject(NzMessageService);
   public permission = inject(PermissionService);
+  private localizationService = inject(LocalizationService);
 
   projectData: PagedResultDto<ProjectDto> = { items: [], totalCount: 0 };
-  users: any[] = []; // Danh sách nhân viên (MemberIds)
-  projectManagers: any[] = []; // Danh sách sếp (ProjectManagerId)
+  users: any[] = []; 
+  projectManagers: any[] = []; 
   loading = false;
   isModalOpen = false;
   isEditMode = false;
@@ -55,22 +58,36 @@ export class ProjectComponent implements OnInit {
   sorting = 'CreationTime DESC';
   isCreationSortDesc = true;
 
+  private pmSubscription?: Subscription; // Quản lý việc tự động cập nhật
+
   ngOnInit(): void {
     this.buildForm();
     this.loadUsers();
-    this.loadProjectManagers(); // Chỉ load những người có Role PM
+    this.loadProjectManagers(); 
     this.loadProjects();
+    this.subscribeToPmChanges(); // Bắt đầu lắng nghe thay đổi PM
+  }
+
+  ngOnDestroy(): void {
+    this.pmSubscription?.unsubscribe();
+  }
+
+  // LOGIC: Tự động cập nhật PM vào danh sách thành viên ngay khi chọn
+  private subscribeToPmChanges(): void {
+    this.pmSubscription = this.form.get('projectManagerId')?.valueChanges.subscribe(pmId => {
+      if (pmId) {
+        const currentMembers = this.form.get('memberIds')?.value || [];
+        if (!currentMembers.includes(pmId)) {
+          this.form.get('memberIds')?.setValue([...currentMembers, pmId]);
+        }
+      }
+    });
   }
 
   loadProjects(): void {
-    const streamCreator = (query) => {
+    const streamCreator = (query: any) => {
       this.loading = true;
-      // FIX: Gửi filterText lên Backend để tìm kiếm "cid"
-      return this.projectService.getList({ 
-        ...query, 
-        filterText: this.filterText, 
-        sorting: this.sorting 
-      });
+      return this.projectService.getList({ ...query, filterText: this.filterText, sorting: this.sorting });
     };
     this.list.hookToQuery(streamCreator).subscribe(res => {
       this.projectData = res;
@@ -79,10 +96,7 @@ export class ProjectComponent implements OnInit {
   }
 
   loadProjectManagers(): void {
-    // Gọi API lọc theo Role "Project manager"
-    this.projectService.getProjectManagersLookup().subscribe(res => {
-      this.projectManagers = res.items;
-    });
+    this.projectService.getProjectManagersLookup().subscribe(res => this.projectManagers = res.items);
   }
 
   loadUsers(): void {
@@ -101,7 +115,7 @@ export class ProjectComponent implements OnInit {
       name: ['', [Validators.required, Validators.maxLength(128)]],
       description: [''],
       projectManagerId: [null, Validators.required],
-      memberIds: [[]] // Mảng ID thành viên để phục vụ multi-select
+      memberIds: [[]] 
     });
   }
 
@@ -118,13 +132,8 @@ export class ProjectComponent implements OnInit {
   editProject(event: Event, project: ProjectDto): void {
     event.stopPropagation();
     this.isEditMode = true;
-    
-    // Lấy chi tiết để có danh sách MemberIds nhằm tick sẵn các ô chọn
     this.projectService.get(project.id).subscribe(res => {
-      this.form.patchValue({
-        ...res,
-        memberIds: res.memberIds || []
-      });
+      this.form.patchValue({ ...res, memberIds: res.memberIds || [] });
       this.isModalOpen = true;
     });
   }
@@ -132,12 +141,14 @@ export class ProjectComponent implements OnInit {
   save(): void {
     if (this.form.invalid) return;
     this.saving = true;
+    const formData = this.form.getRawValue();
+
     const request = this.isEditMode 
-      ? this.projectService.update(this.form.value.id, this.form.value)
-      : this.projectService.create(this.form.value);
+      ? this.projectService.update(formData.id, formData)
+      : this.projectService.create(formData);
 
     request.subscribe(() => {
-      this.message.success(this.l('TaskManagement::SaveSuccess'));
+      this.message.success(this.l('::SaveSuccess'));
       this.isModalOpen = false;
       this.saving = false;
       this.list.get();
@@ -147,12 +158,12 @@ export class ProjectComponent implements OnInit {
   deleteProject(event: Event, id: string): void {
     event.stopPropagation();
     this.projectService.delete(id).subscribe(() => {
-      this.message.success(this.l('TaskManagement::DeletedSuccess'));
+      this.message.success(this.l('::DeletedSuccess'));
       this.list.get();
     });
   }
 
   handleCancel(): void { this.isModalOpen = false; }
 
-  private l(key: string): string { return key; }
+  private l(key: string): string { return this.localizationService.instant(key); }
 }
