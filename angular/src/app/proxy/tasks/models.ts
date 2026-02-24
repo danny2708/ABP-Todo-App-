@@ -8,6 +8,7 @@ export interface CreateUpdateTaskDto {
   description?: string | null;
   status?: TaskStatus;
   dueDate?: string | null;
+  weight?: number;
   assignedUserIds?: string[];
 }
 
@@ -28,6 +29,7 @@ export interface TaskDto extends AuditedEntityDto<string> {
   isApproved?: boolean;
   isRejected?: boolean;
   deletionReason?: string | null;
+  weight?: number;
   assignedUserIds?: string[];
   assignedUserNames?: string[];
   assignedUserName?: string | null;

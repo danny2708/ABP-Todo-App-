@@ -1,4 +1,3 @@
-// angular\src\app\tasks\task.ts
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
@@ -21,7 +20,8 @@ import { NzDatePickerModule } from 'ng-zorro-antd/date-picker';
 import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
-import { NzCheckboxModule } from 'ng-zorro-antd/checkbox'; // Thêm để dùng checkbox lọc
+import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
+import { NzSliderModule } from 'ng-zorro-antd/slider'; // THÊM MODULE THANH TRƯỢT
 
 import { TaskService } from '../proxy/tasks/task.service';
 import { TaskDto, TaskStatus, UserLookupDto } from '../proxy/tasks/models';
@@ -39,7 +39,7 @@ import { Router, ActivatedRoute } from '@angular/router';
     NzDrawerModule, NzTableModule, NzTagModule, NzButtonModule, NzIconModule,
     NzModalModule, NzFormModule, NzInputModule, NzSelectModule, NzProgressModule,
     NzToolTipModule, NzAvatarModule, NzDatePickerModule, NzSpinModule, NzDividerModule,
-    NzCheckboxModule
+    NzCheckboxModule, NzSliderModule // KHAI BÁO TẠI ĐÂY
   ],
 })
 export class TaskComponent implements OnInit {
@@ -54,7 +54,14 @@ export class TaskComponent implements OnInit {
   private configState = inject(ConfigStateService);
   private localizationService = inject(LocalizationService);
 
+  weightMarks: any = {
+    1: '1',
+    5: '5',
+    10: '10'
+  };
+
   taskData: PagedResultDto<TaskDto> = { items: [], totalCount: 0 };
+  allTasksForStats: TaskDto[] = [];
   overdueTasks: TaskDto[] = [];
   pendingTasks: TaskDto[] = [];
   users: UserLookupDto[] = [];
@@ -82,13 +89,14 @@ export class TaskComponent implements OnInit {
   sorting = 'CreationTime DESC';
   pageIndex = 1;
   pageSize = 10;
+  
+  totalCount = 0;
   inProgressCount = 0;
   completedCount = 0;
   pendingCount = 0;
+  totalWeight = 0;
 
-  // BỘ LỌC CHO MODAL QUÁ HẠN
   showOnlyUncompletedOverdue = true;
-
   form!: FormGroup;
 
   ngOnInit(): void {
@@ -107,7 +115,6 @@ export class TaskComponent implements OnInit {
     this.loadPendingTasks();
   }
 
-  // Getter để lọc dữ liệu hiển thị trên bảng Overdue
   get filteredOverdueTasks() {
     if (this.showOnlyUncompletedOverdue) {
       return this.overdueTasks.filter(t => t.status !== TaskStatus.Completed);
@@ -115,9 +122,7 @@ export class TaskComponent implements OnInit {
     return this.overdueTasks;
   }
 
-  goBack(): void { 
-    this.router.navigate(['/projects']); 
-  }
+  goBack(): void { this.router.navigate(['/projects']); }
 
   private loadProjectInfo(): void {
     this.projectService.get(this.projectId).subscribe(res => {
@@ -133,6 +138,13 @@ export class TaskComponent implements OnInit {
   }
 
   private loadTasks(): void {
+    this.taskService.getList({ projectId: this.projectId, isApproved: true, maxResultCount: 1000 })
+      .subscribe(res => {
+        this.allTasksForStats = res.items;
+        this.totalCount = res.totalCount;
+        this.calculateStats();
+      });
+
     const streamCreator = (query: any) => {
       this.loading = true;
       return this.taskService.getList({
@@ -145,43 +157,14 @@ export class TaskComponent implements OnInit {
     };
     this.list.hookToQuery(streamCreator).subscribe(res => {
       this.taskData = res;
-      this.calculateStats();
       this.loading = false;
     });
   }
 
-  onSort(sort: { key: string; value: string | null }): void {
-    if (sort.value) {
-      this.sorting = `${sort.key} ${sort.value === 'descend' ? 'DESC' : 'ASC'}`;
-    } else {
-      this.sorting = 'CreationTime DESC';
-    }
-    this.list.get();
-  }
-
-  loadOverdueTasks(): void { this.taskService.getOverdueList(this.projectId).subscribe(res => this.overdueTasks = res.items); }
-
-  loadPendingTasks(): void {
-    this.taskService.getList({ projectId: this.projectId, isApproved: false, maxResultCount: 100 })
-      .subscribe(res => { this.pendingTasks = res.items; this.pendingCount = res.totalCount; });
-  }
-
-  onSearch(): void { this.list.page = 0; this.list.get(); }
-
-  onPageChange(pageIndex: number): void {
-    this.pageIndex = pageIndex;
-    this.list.page = pageIndex - 1;
-  }
-
-  onPageSizeChange(pageSize: number): void {
-    this.pageSize = pageSize;
-    this.list.maxResultCount = pageSize;
-    this.list.get();
-  }
-
   private calculateStats(): void {
-    this.inProgressCount = this.taskData.items.filter(t => t.status === TaskStatus.InProgress).length;
-    this.completedCount = this.taskData.items.filter(t => t.status === TaskStatus.Completed).length;
+    this.inProgressCount = this.allTasksForStats.filter(t => t.status === TaskStatus.InProgress).length;
+    this.completedCount = this.allTasksForStats.filter(t => t.status === TaskStatus.Completed).length;
+    this.totalWeight = this.allTasksForStats.reduce((sum, t) => sum + (t.weight || 1), 0);
   }
 
   private buildForm(): void {
@@ -190,6 +173,7 @@ export class TaskComponent implements OnInit {
       title: ['', [Validators.required, Validators.maxLength(256)]],
       description: [null],
       status: [TaskStatus.New, Validators.required],
+      weight: [1, [Validators.required, Validators.min(1), Validators.max(10)]], // TRỌNG SỐ CHO SLIDER
       assignedUserIds: [[]],
       dueDate: [null],
       isApproved: [true]
@@ -199,7 +183,7 @@ export class TaskComponent implements OnInit {
   createTask(): void {
     this.isEditMode = false;
     this.selectedTaskId = null;
-    this.form.reset({ status: TaskStatus.New, projectId: this.projectId, isApproved: this.hasCreatePermission, assignedUserIds: [] });
+    this.form.reset({ status: TaskStatus.New, weight: 1, projectId: this.projectId, isApproved: this.hasCreatePermission, assignedUserIds: [] });
     this.form.enable(); 
     this.isModalOpen = true;
   }
@@ -222,78 +206,92 @@ export class TaskComponent implements OnInit {
     this.isModalOpen = true;
   }
 
-  canDeleteTask(task: TaskDto): boolean {
-    if (this.hasApprovePermission) return task.status !== TaskStatus.Completed; 
-    return !task.isApproved && task.creatorId === this.currentUser.id;
+  onSort(sort: { key: string; value: string | null }): void {
+    this.sorting = sort.value ? `${sort.key} ${sort.value === 'descend' ? 'DESC' : 'ASC'}` : 'CreationTime DESC';
+    this.list.get();
   }
+
+  loadOverdueTasks(): void { this.taskService.getOverdueList(this.projectId).subscribe(res => this.overdueTasks = res.items); }
+
+  loadPendingTasks(): void {
+    this.taskService.getList({ projectId: this.projectId, isApproved: false, maxResultCount: 100 })
+      .subscribe(res => { this.pendingTasks = res.items; this.pendingCount = res.totalCount; });
+  }
+
+  onSearch(): void { this.list.page = 0; this.list.get(); }
+
+  onPageChange(pageIndex: number): void { this.pageIndex = pageIndex; this.list.page = pageIndex - 1; }
+
+  onPageSizeChange(pageSize: number): void { this.pageSize = pageSize; this.list.maxResultCount = pageSize; this.list.get(); }
 
   confirmDelete(id: string): void {
     const task = this.taskData.items.find(t => t.id === id) || this.pendingTasks.find(t => t.id === id);
-    if (!task) return;
-
-    if (!this.canDeleteTask(task)) {
-        this.message.error(this.l('::NoPermissionToDeleteApprovedTask'));
+    if (!task || !this.canDeleteTask(task)) {
+        this.message.error(this.l('::NoPermissionToDeleteTask'));
         return;
     }
-
     this.selectedTaskId = id;
     this.deletionReason = '';
     this.isReasonModalOpen = true;
   }
 
   deleteTaskWithReason(): void {
-    if (!this.deletionReason.trim()) {
-        this.message.warning(this.l('::ReasonRequired'));
-        return;
-    }
+    if (!this.deletionReason.trim()) { this.message.warning(this.l('::ReasonRequired')); return; }
     this.taskService.delete(this.selectedTaskId!, this.deletionReason).subscribe(() => {
         this.message.success(this.l('::DeletedSuccess'));
         this.isReasonModalOpen = false;
-        this.refreshData();
+        this.refreshData(); // CẬP NHẬT TIẾN ĐỘ DỰ ÁN
         this.isPendingModalOpen = false;    
     });
   }
-
-  approveTask(id: string): void {
-    this.taskService.approve(id).subscribe(() => {
-      this.message.success(this.l('::ApprovedSuccess'));
-      this.refreshData();
-      this.isPendingModalOpen = false; this.isModalOpen = false;
-    });
-  }
-
-  rejectTask(id: string): void {
-    this.taskService.reject(id).subscribe(() => {
-      this.message.success(this.l('::RejectedSuccess'));
-      this.refreshData();
-      this.isPendingModalOpen = false; this.isModalOpen = false;
-    });
-  }
-
-  private refreshData(): void {
-    this.list.get(); this.loadOverdueTasks(); this.loadPendingTasks();
-  }
-
-  handleCancel(): void { this.isModalOpen = false; }
 
   save(): void {
     if (this.form.invalid) return;
     this.saving = true;
     const formData = this.form.getRawValue();
-    const request = this.isEditMode && this.selectedTaskId ? this.taskService.update(this.selectedTaskId, formData) : this.taskService.create(formData);
+    const request = this.isEditMode ? this.taskService.update(this.selectedTaskId!, formData) : this.taskService.create(formData);
     request.subscribe({
       next: () => {
-        // Sử dụng service chuẩn để hiện tiếng Việt
-        const message = this.localizationService.instant('::SaveSuccess');    
-        this.message.success(message);
-        
+        this.message.success(this.l('::SaveSuccess'));
         this.isModalOpen = false;
-        this.refreshData();
+        this.refreshData(); // CẬP NHẬT TIẾN ĐỘ DỰ ÁN
         this.saving = false;
       },
       error: () => this.saving = false
     });
   }
+
+  canDeleteTask(task: TaskDto): boolean {
+    if (this.hasApprovePermission) return task.status !== TaskStatus.Completed; 
+    return !task.isApproved && task.creatorId === this.currentUser.id;
+  }
+
+  approveTask(id: string): void { 
+    this.taskService.approve(id).subscribe(() => { 
+      this.message.success(this.l('::ApprovedSuccess')); 
+      this.refreshData(); 
+      this.isPendingModalOpen = false; 
+      this.isModalOpen = false; 
+    }); 
+  }
+
+  rejectTask(id: string): void { 
+    this.taskService.reject(id).subscribe(() => { 
+      this.message.success(this.l('::RejectedSuccess')); 
+      this.refreshData(); 
+      this.isPendingModalOpen = false; 
+      this.isModalOpen = false; 
+    }); 
+  }
+
+  private refreshData(): void { 
+    this.list.get(); 
+    this.loadOverdueTasks(); 
+    this.loadPendingTasks(); 
+    this.loadProjectInfo(); // LẤY LẠI % TIẾN ĐỘ TỪ BACKEND
+  }
+
+  handleCancel(): void { this.isModalOpen = false; }
 
   isOverdue(dueDate: string | null): boolean { return dueDate ? new Date(dueDate) < new Date() : false; }
 
@@ -306,8 +304,5 @@ export class TaskComponent implements OnInit {
     return `Enum:TaskStatus:${(TaskStatus as any)[status as number]}`;
   }
 
-  // Cập nhật hàm dịch để dùng LocalizationService thật
-  private l(key: string): string { 
-    return this.localizationService.instant(key); 
-  }
+  private l(key: string): string { return this.localizationService.instant(key); }
 }

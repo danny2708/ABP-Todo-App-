@@ -103,14 +103,16 @@ namespace TaskManagement.Tasks
                 if (!isMember) throw new UserFriendlyException(L["TaskManagement::NoPermissionToCreateTask"]);
             }
 
-            var task = new AppTask(GuidGenerator.Create(), input.ProjectId, input.Title)
-            {
-                Description = input.Description,
-                DueDate = input.DueDate,
-                IsApproved = isBoss,
-                IsRejected = false,
-                DeletionReason = null
-            };
+            var task = new AppTask(
+                    GuidGenerator.Create(),
+                    input.ProjectId,
+                    input.Title,
+                    input.Status, 
+                    input.Weight  
+                );
+
+            task.Description = input.Description;
+            task.DueDate = input.DueDate;
 
             foreach (var userId in input.AssignedUserIds)
             {

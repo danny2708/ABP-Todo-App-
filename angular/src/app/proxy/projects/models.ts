@@ -19,5 +19,6 @@ export interface ProjectDto extends AuditedEntityDto<string> {
   taskCount?: number;
   completedTaskCount?: number;
   progress?: number;
+  memberCount?: number;
   memberIds?: string[];
 }

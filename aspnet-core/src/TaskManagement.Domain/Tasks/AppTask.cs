@@ -18,7 +18,7 @@ namespace TaskManagement.Tasks
         public string? DeletionReason { get; set; }
         
         // Trọng số công việc 
-        public int Weight { get; set; } = 1;
+        public int Weight { get; set; }
 
         public ICollection<TaskAssignment> Assignments { get; set; }
 
@@ -27,12 +27,12 @@ namespace TaskManagement.Tasks
             Assignments = new Collection<TaskAssignment>();
         }
 
-        public AppTask(Guid id, Guid projectId, string title, int weight = 1) : base(id)
+        public AppTask(Guid id, Guid projectId, string title, TaskStatus status, int weight) : base(id)
         {
             ProjectId = projectId;
             Title = title;
-            Weight = weight; // Khởi tạo trọng số
-            Status = TaskStatus.New;
+            Status = status; 
+            Weight = weight; 
             IsApproved = true; 
             IsRejected = false;
             Assignments = new Collection<TaskAssignment>();
