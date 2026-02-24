@@ -93,3 +93,14 @@
     }
   }
 }
+
+/* CSS Hiển thị đường kẻ đôi (double line) báo hiệu bị ngắt quãng giờ */
+.border-top-jump {
+  border-top: 3px double #d9d9d9 !important;
+  background-color: rgba(0, 0, 0, 0.01);
+}
+
+.bg-group-card {
+  background-color: #f0f5ff !important;
+  border-left-color: #2f54eb !important;
+}

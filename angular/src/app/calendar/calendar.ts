@@ -20,7 +20,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 
 // Services
-import { CalendarService } from '../proxy/controllers/calendar.service'; 
+import { CalendarService } from '../proxy/controllers/calendar.service'; // Check lại đường dẫn service
 import { TaskDto, TaskStatus } from '../proxy/tasks/models';
 import { ProjectService } from '../proxy/projects/project.service';
 
@@ -57,22 +57,18 @@ export class CalendarComponent implements OnInit {
   allTasks: TaskDto[] = [];
   displayTasks: TaskDto[] = [];
   
-  // Nâng cấp Dropdown dự án
   projects: any[] = [];
   selectedProjectIds: string[] = []; 
   
   PX_PER_HOUR = 45;
-  START_HOUR = 0; 
-  END_HOUR = 23;
-  timeSlots = Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+  // MẢNG ĐỘNG CHỨA CÁC GIỜ SẼ HIỂN THỊ (Đã loại bỏ khung giờ rác)
+  activeHours: number[] = []; 
 
-  // BIẾN TỐI ƯU HIỆU NĂNG (Tránh vòng lặp vô hạn ở HTML)
   weekDaysList: Date[] = [];
   tasksByDayMap = new Map<string, CalendarEventGroup[]>();
   tasksForMonthMap = new Map<string, TaskDto[]>();
   listGroupedTasks: [string, TaskDto[]][] = [];
 
-  // Quản lý Modal
   isTaskModalVisible = false;
   selectedGroupTasks: TaskDto[] = [];
 
@@ -85,7 +81,7 @@ export class CalendarComponent implements OnInit {
   loadProjects(): void {
     this.projectService.getList({ maxResultCount: 1000 }).subscribe(res => {
       this.projects = res.items;
-      this.selectedProjectIds = this.projects.map(p => p.id); // Mặc định chọn tất cả
+      this.selectedProjectIds = this.projects.map(p => p.id); 
       this.applyFilter(); 
     });
   }
@@ -105,7 +101,6 @@ export class CalendarComponent implements OnInit {
   applyFilter(): void {
     if (this.projects.length === 0) return;
 
-    // 1. Lọc data
     this.displayTasks = this.allTasks.filter(t => {
       const matchProject = this.selectedProjectIds.includes(t.projectId);
       const matchSearch = !this.searchTerm || 
@@ -114,21 +109,19 @@ export class CalendarComponent implements OnInit {
       return matchProject && matchSearch;
     });
 
-    // 2. Tiền xử lý dữ liệu (Pre-compute) để UI không bị giật lag
     this.buildDataMaps();
   }
 
-  // Tiền xử lý dữ liệu 1 lần duy nhất mỗi khi filter đổi
   buildDataMaps() {
     this.tasksByDayMap.clear();
     this.tasksForMonthMap.clear();
 
     const listMap = new Map<string, TaskDto[]>();
+    const taskHoursSet = new Set<number>();
 
     this.displayTasks.forEach(task => {
       const dateKey = this.formatDateKey(new Date(task.dueDate));
       
-      // Map cho Month View & List View
       if (!this.tasksForMonthMap.has(dateKey)) this.tasksForMonthMap.set(dateKey, []);
       this.tasksForMonthMap.get(dateKey)!.push(task);
       
@@ -138,12 +131,35 @@ export class CalendarComponent implements OnInit {
 
     this.listGroupedTasks = Array.from(listMap.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 
-    // Gộp nhóm cho Week View
+    // BƯỚC 1: XÂY DỰNG MẢNG GIỜ ĐỘNG (Lọc các giờ có task trong tuần)
+    this.weekDaysList.forEach(day => {
+      const dateKey = this.formatDateKey(day);
+      const tasksOnThisDay = this.tasksForMonthMap.get(dateKey) || [];
+      tasksOnThisDay.forEach(t => {
+        taskHoursSet.add(new Date(t.dueDate).getHours());
+      });
+    });
+
+    if (taskHoursSet.size === 0) {
+      // Mặc định giờ hành chính nếu tuần rỗng
+      this.activeHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+    } else {
+      // Thêm đệm (buffer) 1h trước và 1h sau để card không bị sát viền
+      const expandedHours = new Set<number>();
+      taskHoursSet.forEach(h => {
+        if (h > 0) expandedHours.add(h - 1);
+        expandedHours.add(h);
+        if (h < 23) expandedHours.add(h + 1);
+      });
+      // Sắp xếp lại từ bé đến lớn
+      this.activeHours = Array.from(expandedHours).sort((a, b) => a - b);
+    }
+
+    // BƯỚC 2: TÍNH TOẠ ĐỘ DỰA VÀO VỊ TRÍ TRONG MẢNG ACTIVE_HOURS
     this.weekDaysList.forEach(day => {
       const dateKey = this.formatDateKey(day);
       const tasksOnThisDay = this.tasksForMonthMap.get(dateKey) || [];
 
-      // Gom nhóm theo Giờ + Phút
       const timeGroupMap = new Map<string, TaskDto[]>();
       tasksOnThisDay.forEach(t => {
         const d = new Date(t.dueDate);
@@ -168,12 +184,17 @@ export class CalendarComponent implements OnInit {
   }
 
   calculatePosition(date: Date) {
-    const startMinutes = date.getHours() * 60 + date.getMinutes();
-    const topPx = ((startMinutes - this.START_HOUR * 60) / 60) * this.PX_PER_HOUR;
-    return { topPx: Math.max(0, topPx), heightPx: this.PX_PER_HOUR }; 
+    const hour = date.getHours();
+    const minutes = date.getMinutes();
+    
+    // TÌM VỊ TRÍ INDEX ĐỂ XÁC ĐỊNH TOẠ ĐỘ Y
+    const hourIndex = this.activeHours.indexOf(hour);
+    const safeIndex = hourIndex !== -1 ? hourIndex : 0; // Tránh lỗi
+
+    const topPx = (safeIndex * this.PX_PER_HOUR) + ((minutes / 60) * this.PX_PER_HOUR);
+    return { topPx, heightPx: this.PX_PER_HOUR }; 
   }
 
-  /* ---------- HELPER DATE ---------- */
   getStartOfWeek(date: Date): Date {
     const d = new Date(date);
     const day = d.getDay();
@@ -207,7 +228,6 @@ export class CalendarComponent implements OnInit {
     this.buildDataMaps();
   }
 
-  /* ---------- TRUY XUẤT NHANH TRÊN HTML ---------- */
   getTasksForMonth(date: Date): TaskDto[] {
     return this.tasksForMonthMap.get(this.formatDateKey(date)) || [];
   }
@@ -216,7 +236,6 @@ export class CalendarComponent implements OnInit {
     return this.tasksByDayMap.get(this.formatDateKey(date)) || [];
   }
 
-  // Mở Modal xem chi tiết
   openGroupModal(group: CalendarEventGroup) {
     this.selectedGroupTasks = group.tasks;
     this.isTaskModalVisible = true;
