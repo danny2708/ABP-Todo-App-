@@ -115,7 +115,9 @@ export class TaskComponent implements OnInit {
     return this.overdueTasks;
   }
 
-  goBack(): void { this.router.navigate(['/tasks']); }
+  goBack(): void { 
+    this.router.navigate(['/projects']); 
+  }
 
   private loadProjectInfo(): void {
     this.projectService.get(this.projectId).subscribe(res => {

@@ -1,3 +1,4 @@
+// angular\src\app\app.routes.ts
 import { authGuard, permissionGuard } from '@abp/ng.core';
 import { Routes } from '@angular/router';
 
@@ -24,7 +25,7 @@ export const APP_ROUTES: Routes = [
     loadChildren: () => import('@abp/ng.setting-management').then(c => c.createRoutes()),
   },
   {
-    path: 'tasks',
+    path: 'projects',
     loadChildren: () => import('./tasks/tasks-module').then(m => m.TasksModule),
   },
 ];

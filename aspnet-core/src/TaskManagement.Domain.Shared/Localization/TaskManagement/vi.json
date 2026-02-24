@@ -1,6 +1,12 @@
 {
   "culture": "vi",
   "texts": {
+    "Welcome to our Platform": "Chào mừng bạn đến với nền tảng của chúng tôi",
+    "WelcomeDescription": "Giải pháp quản lý dự án toàn diện giúp đội ngũ của bạn lập kế hoạch thông minh, theo dõi tiến độ thời gian thực và tối ưu hóa quy trình phê duyệt. Từ những dự án cá nhân nhỏ đến các kế hoạch doanh nghiệp phức tạp, chúng tôi giúp bạn biến ý tưởng thành hiện thực một cách có hệ thống và minh bạch nhất.",
+    "Continue to Work": "Tiếp tục công việc",
+    "Get Started For Free": "Bắt đầu miễn phí",
+    "NEW": "MỚI",
+    "New Feature Announce": "Thông báo tính năng mới",
     "Welcome": "Xin chào",
     "Menu:TaskManagement": "Quản lý dự án",
     "Menu:Projects": "Dự án",

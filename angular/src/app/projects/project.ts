@@ -120,7 +120,7 @@ export class ProjectComponent implements OnInit, OnDestroy {
   }
 
   openTasks(projectId: string): void {
-    this.router.navigate(['/tasks/details'], { queryParams: { projectId } });
+    this.router.navigate(['/projects/details'], { queryParams: { projectId } });
   }
 
   createProject(): void {

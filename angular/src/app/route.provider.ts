@@ -1,3 +1,4 @@
+// angular\src\app\route.provider.ts
 import { RoutesService, eLayoutType } from '@abp/ng.core';
 import { inject, provideAppInitializer } from '@angular/core';
 
@@ -12,20 +13,18 @@ function configureRoutes() {
   routes.add([
     {
       path: '/',
-      // SỬA: Thêm tên Resource 'TaskManagement' vào trước dấu ::
       name: 'TaskManagement::Menu:Home', 
       iconClass: 'fas fa-home',
       order: 1,
       layout: eLayoutType.application,
     },
     {
-      path: '/tasks',
-      // SỬA: Tương tự cho nút Tasks
-      name: 'TaskManagement::Menu:Tasks', 
-      iconClass: 'fas fa-tasks',
+      path: '/projects', 
+      name: 'TaskManagement::Menu:Projects', 
+      iconClass: 'fas fa-project-diagram',    
       order: 2,
       layout: eLayoutType.application,
-      requiredPolicy: 'TaskManagement.Tasks',
+      requiredPolicy: 'TaskManagement.Projects',
     },
   ]);
 }
