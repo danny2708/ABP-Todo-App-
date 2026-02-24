@@ -7,7 +7,7 @@ body, .task-page-container {
   border-radius: 16px !important;
 }
 
-/* Chữ đen tuyệt đối */
+/* Chữ đen tuyệt đối cho giao diện thông thường */
 .text-black, .text-dark, .form-label, td, span, label, th, input, .ant-select-selection-item {
   color: #000 !important;
   opacity: 1 !important;
@@ -53,6 +53,34 @@ body, .task-page-container {
   border-left: 6px solid #1890ff !important;
 }
 
+/* HIỆU ỨNG ĐẶC BIỆT CHO DỰ ÁN HOÀN THÀNH 100% */
+.project-completed {
+  /* Ép nền xanh lá cây gradient */
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%) !important;
+  border-color: #52c41a !important;
+  box-shadow: 0 10px 20px rgba(82, 196, 26, 0.3) !important;
+  transition: all 0.4s ease;
+
+  /* SỬA LỖI: Chỉ ép chữ trắng khi nằm trong card đã hoàn thành */
+  .text-black, h5, span, .x-small, i {
+    color: #ffffff !important;
+  }
+
+  /* Ép màu thanh Progress sang trắng để không bị chìm */
+  .ant-progress-bg {
+    background-color: #ffffff !important;
+  }
+
+  .text-muted, .text-white-50 {
+    color: rgba(255, 255, 255, 0.8) !important;
+  }
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 30px rgba(82, 196, 26, 0.5) !important;
+  }
+}
+
 /* LANDING PAGE V2 STYLES */
 .landing-page-v2 {
   --lp-primary: #1890ff;
@@ -61,7 +89,7 @@ body, .task-page-container {
   font-family: 'Inter', -apple-system, sans-serif;
   overflow-x: hidden;
   
-  /* FIX: Hạ thấp z-index để không đè lên Dropdown Ngôn ngữ/Tài khoản */
+  /* FIX: Ngăn chặn việc đè lên Menu Dropdown */
   position: relative;
   z-index: 0; 
 
@@ -88,7 +116,6 @@ body, .task-page-container {
   .hover-scale:hover { transform: scale(1.05); }
   .hover-up:hover { transform: translateY(-5px); }
 
-  /* FIX: Đưa blob mờ xuống dưới cùng để tránh che mất nội dung */
   .hero-blob {
     position: absolute; 
     top: -10%; 
@@ -110,7 +137,7 @@ body, .task-page-container {
   /* FLOATING CARDS */
   .floating-card {
     position: absolute; 
-    z-index: 1; /* Giảm nhẹ để nhường ưu tiên cho dropdown hệ thống */
+    z-index: 1; 
     &.c1 { top: 20%; left: -5%; }
     &.c2 { bottom: 15%; right: -5%; }
   }
@@ -131,16 +158,3 @@ body, .task-page-container {
 }
 .animate-float { animation: float 4s infinite ease-in-out; }
 .animate-float-delayed { animation: float 4s infinite ease-in-out 1.5s; }
-
-/* HIỆU ỨNG PHÁT SÁNG CHO DỰ ÁN HOÀN THÀNH */
-.glow-icon {
-  color: #52c41a !important;
-  filter: drop-shadow(0 0 5px rgba(82, 196, 26, 0.8));
-  animation: pulse-glow 2s infinite ease-in-out;
-}
-
-@keyframes pulse-glow {
-  0% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.1); opacity: 1; }
-  100% { transform: scale(1); opacity: 0.8; }
-}

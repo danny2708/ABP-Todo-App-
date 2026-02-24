@@ -29,9 +29,13 @@
   <nz-spin [nzSpinning]="loading">
     <div class="row g-4">
       <div class="col-md-4" *ngFor="let item of projectData.items">
-        <nz-card class="project-card border shadow-sm rounded-16 overflow-hidden position-relative" 
+        <nz-card class="project-card border shadow-sm rounded-16 overflow-hidden position-relative transition-all" 
                  (click)="openTasks(item.id)" [nzBodyStyle]="{ padding: '20px' }">
           
+          <div *ngIf="item.progress === 100" class="position-absolute" style="top: 15px; right: 15px; z-index: 2;">
+            <i nz-icon nzType="check-circle" nzTheme="fill" class="text-success fs-4"></i>
+          </div>
+
           <div class="mb-2">
             <h5 class="text-black fw-bold mb-1">{{ item.name }}</h5>
             <p class="text-muted small text-truncate mb-3">{{ item.description || ('TaskManagement::NoDescription' | abpLocalization) }}</p>
@@ -42,17 +46,17 @@
               <span class="text-black x-small fw-bold">{{ 'TaskManagement::Progress' | abpLocalization }}</span>
               <span class="text-primary fw-bold small">{{ item.progress | number:'1.0-0' }}%</span>
             </div>
-            <nz-progress [nzPercent]="item.progress" [nzShowInfo]="false" nzStatus="active" [nzStrokeWidth]="8" [nzStrokeColor]="{ '0%': '#1890ff', '100%': '#52c41a' }"></nz-progress>
+            <nz-progress [nzPercent]="item.progress" [nzShowInfo]="false" nzStatus="active" [nzStrokeWidth]="8" 
+                         [nzStrokeColor]="{ '0%': '#1890ff', '100%': '#52c41a' }">
+            </nz-progress>
           </div>
 
           <div class="d-flex gap-4 mb-3">
-            <div class="d-flex align-items-center gap-1" nz-tooltip [nzTooltipTitle]="'TaskManagement::TotalTasks' | abpLocalization">
-              <i nz-icon nzType="check-circle" 
-                 class="text-success fs-5" 
-                 [class.glow-icon]="item.progress === 100"></i>
+            <div class="d-flex align-items-center gap-1">
+              <i nz-icon nzType="check-circle" class="text-success fs-5"></i>
               <span class="text-black small fw-bold">{{ item.taskCount || 0 }}</span>
             </div>
-            <div class="d-flex align-items-center gap-1" nz-tooltip [nzTooltipTitle]="'TaskManagement::TotalMembers' | abpLocalization">
+            <div class="d-flex align-items-center gap-1">
               <i nz-icon nzType="team" class="text-info fs-5"></i>
               <span class="text-black small fw-bold">{{ item.memberCount || 0 }}</span>
             </div>
@@ -70,11 +74,15 @@
             </div>
 
             <div class="project-footer-actions d-flex gap-1">
-              <button nz-button nzType="text" nzShape="circle" (click)="editProject($event, item)" nz-tooltip [nzTooltipTitle]="'TaskManagement::Edit' | abpLocalization">
+              <button *ngIf="canEditProject(item)" 
+                      nz-button nzType="text" nzShape="circle" (click)="editProject($event, item)" 
+                      nz-tooltip [nzTooltipTitle]="'TaskManagement::Edit' | abpLocalization">
                 <i nz-icon nzType="edit" class="text-primary fs-5"></i>
               </button>
+              
               <button *ngIf="permission.getGrantedPolicy('TaskManagement.Projects.Delete')" 
-                      nz-button nzType="text" nzShape="circle" (click)="deleteProject($event, item.id)" nz-tooltip [nzTooltipTitle]="'TaskManagement::Delete' | abpLocalization">
+                      nz-button nzType="text" nzShape="circle" (click)="deleteProject($event, item.id)" 
+                      nz-tooltip [nzTooltipTitle]="'TaskManagement::Delete' | abpLocalization">
                 <i nz-icon nzType="delete" class="text-danger fs-5"></i>
               </button>
             </div>

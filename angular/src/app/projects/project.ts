@@ -1,11 +1,10 @@
-// angular\src\app\projects\project.ts
 import { Component, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { ListService, PagedResultDto, CoreModule, PermissionService, LocalizationService } from '@abp/ng.core';
+import { ListService, PagedResultDto, CoreModule, PermissionService, LocalizationService, ConfigStateService, CurrentUserDto } from '@abp/ng.core';
 import { ThemeSharedModule } from '@abp/ng.theme.shared';
 import { Router } from '@angular/router';
-import { Subscription } from 'rxjs'; // Thêm để quản lý subscription
+import { Subscription } from 'rxjs';
 
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
@@ -43,8 +42,9 @@ export class ProjectComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private message = inject(NzMessageService);
-  public permission = inject(PermissionService);
+  public permission = inject(PermissionService); // Đảm bảo là public
   private localizationService = inject(LocalizationService);
+  private configState = inject(ConfigStateService);
 
   projectData: PagedResultDto<ProjectDto> = { items: [], totalCount: 0 };
   users: any[] = []; 
@@ -57,22 +57,29 @@ export class ProjectComponent implements OnInit, OnDestroy {
   filterText = '';
   sorting = 'CreationTime DESC';
   isCreationSortDesc = true;
+  currentUser: CurrentUserDto;
 
-  private pmSubscription?: Subscription; // Quản lý việc tự động cập nhật
+  private pmSubscription?: Subscription;
 
   ngOnInit(): void {
+    this.currentUser = this.configState.getOne('currentUser');
     this.buildForm();
     this.loadUsers();
     this.loadProjectManagers(); 
     this.loadProjects();
-    this.subscribeToPmChanges(); // Bắt đầu lắng nghe thay đổi PM
+    this.subscribeToPmChanges();
   }
 
   ngOnDestroy(): void {
     this.pmSubscription?.unsubscribe();
   }
 
-  // LOGIC: Tự động cập nhật PM vào danh sách thành viên ngay khi chọn
+  canEditProject(project: ProjectDto): boolean {
+      const hasGlobalEditPermission = this.permission.getGrantedPolicy('TaskManagement.Projects.Update');
+      const isProjectManager = project.projectManagerId === this.currentUser.id;
+      return hasGlobalEditPermission || isProjectManager;
+    }
+
   private subscribeToPmChanges(): void {
     this.pmSubscription = this.form.get('projectManagerId')?.valueChanges.subscribe(pmId => {
       if (pmId) {
@@ -130,13 +137,19 @@ export class ProjectComponent implements OnInit, OnDestroy {
   }
 
   editProject(event: Event, project: ProjectDto): void {
-    event.stopPropagation();
-    this.isEditMode = true;
-    this.projectService.get(project.id).subscribe(res => {
-      this.form.patchValue({ ...res, memberIds: res.memberIds || [] });
-      this.isModalOpen = true;
-    });
-  }
+      event.stopPropagation();
+      
+      if (!this.canEditProject(project)) {
+        this.message.error(this.l('::NoPermissionToEditProject'));
+        return;
+      }
+  
+      this.isEditMode = true;
+      this.projectService.get(project.id).subscribe(res => {
+        this.form.patchValue({ ...res, memberIds: res.memberIds || [] });
+        this.isModalOpen = true;
+      });
+    }
 
   save(): void {
     if (this.form.invalid) return;
