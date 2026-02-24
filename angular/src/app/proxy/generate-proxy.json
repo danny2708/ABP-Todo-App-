@@ -873,6 +873,74 @@
       "rootPath": "app",
       "remoteServiceName": "TaskManagement",
       "controllers": {
+        "TaskManagement.Controllers.CalendarController": {
+          "controllerName": "Calendar",
+          "controllerGroupName": null,
+          "isRemoteService": false,
+          "isIntegrationService": false,
+          "apiVersion": null,
+          "type": "TaskManagement.Controllers.CalendarController",
+          "interfaces": [],
+          "actions": {
+            "GetCalendarTasksAsyncByStartDateAndEndDate": {
+              "uniqueName": "GetCalendarTasksAsyncByStartDateAndEndDate",
+              "name": "GetCalendarTasksAsync",
+              "httpMethod": "GET",
+              "url": "api/app/calendar/tasks",
+              "supportedVersions": [],
+              "parametersOnMethod": [
+                {
+                  "name": "startDate",
+                  "typeAsString": "System.Nullable`1[[System.DateTime, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib",
+                  "type": "System.DateTime?",
+                  "typeSimple": "string?",
+                  "isOptional": false,
+                  "defaultValue": null
+                },
+                {
+                  "name": "endDate",
+                  "typeAsString": "System.Nullable`1[[System.DateTime, System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]], System.Private.CoreLib",
+                  "type": "System.DateTime?",
+                  "typeSimple": "string?",
+                  "isOptional": false,
+                  "defaultValue": null
+                }
+              ],
+              "parameters": [
+                {
+                  "nameOnMethod": "startDate",
+                  "name": "startDate",
+                  "jsonName": null,
+                  "type": "System.DateTime?",
+                  "typeSimple": "string?",
+                  "isOptional": false,
+                  "defaultValue": null,
+                  "constraintTypes": null,
+                  "bindingSourceId": "ModelBinding",
+                  "descriptorName": ""
+                },
+                {
+                  "nameOnMethod": "endDate",
+                  "name": "endDate",
+                  "jsonName": null,
+                  "type": "System.DateTime?",
+                  "typeSimple": "string?",
+                  "isOptional": false,
+                  "defaultValue": null,
+                  "constraintTypes": null,
+                  "bindingSourceId": "ModelBinding",
+                  "descriptorName": ""
+                }
+              ],
+              "returnValue": {
+                "type": "System.Collections.Generic.List<TaskManagement.Tasks.TaskDto>",
+                "typeSimple": "[TaskManagement.Tasks.TaskDto]"
+              },
+              "allowAnonymous": null,
+              "implementFrom": "TaskManagement.Controllers.CalendarController"
+            }
+          }
+        },
         "TaskManagement.Projects.ProjectController": {
           "controllerName": "Project",
           "controllerGroupName": "Project",

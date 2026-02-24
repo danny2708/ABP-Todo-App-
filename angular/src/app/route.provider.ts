@@ -26,5 +26,12 @@ function configureRoutes() {
       layout: eLayoutType.application,
       requiredPolicy: 'TaskManagement.Projects',
     },
+    {
+      path: '/calendar',
+      name: 'TaskManagement::Menu:Calendar', 
+      iconClass: 'fas fa-calendar-alt', 
+      order: 3, 
+      layout: eLayoutType.application,
+    },
   ]);
 }

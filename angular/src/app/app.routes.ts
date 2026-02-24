@@ -28,4 +28,8 @@ export const APP_ROUTES: Routes = [
     path: 'projects',
     loadChildren: () => import('./tasks/tasks-module').then(m => m.TasksModule),
   },
+  {
+    path: 'calendar',
+    loadComponent: () => import('./calendar/calendar').then(m => m.CalendarComponent),
+  },
 ];
