@@ -21,7 +21,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { NzDividerModule } from 'ng-zorro-antd/divider';
 import { NzProgressModule } from 'ng-zorro-antd/progress';
 import { NzCheckboxModule } from 'ng-zorro-antd/checkbox';
-import { NzSliderModule } from 'ng-zorro-antd/slider'; // THÊM MODULE THANH TRƯỢT
+import { NzSliderModule } from 'ng-zorro-antd/slider';
 
 import { TaskService } from '../proxy/tasks/task.service';
 import { TaskDto, TaskStatus, UserLookupDto } from '../proxy/tasks/models';
@@ -39,7 +39,7 @@ import { Router, ActivatedRoute } from '@angular/router';
     NzDrawerModule, NzTableModule, NzTagModule, NzButtonModule, NzIconModule,
     NzModalModule, NzFormModule, NzInputModule, NzSelectModule, NzProgressModule,
     NzToolTipModule, NzAvatarModule, NzDatePickerModule, NzSpinModule, NzDividerModule,
-    NzCheckboxModule, NzSliderModule // KHAI BÁO TẠI ĐÂY
+    NzCheckboxModule, NzSliderModule
   ],
 })
 export class TaskComponent implements OnInit {
@@ -54,11 +54,7 @@ export class TaskComponent implements OnInit {
   private configState = inject(ConfigStateService);
   private localizationService = inject(LocalizationService);
 
-  weightMarks: any = {
-    1: '1',
-    5: '5',
-    10: '10'
-  };
+  weightMarks: any = { 1: '1', 5: '5', 10: '10' };
 
   taskData: PagedResultDto<TaskDto> = { items: [], totalCount: 0 };
   allTasksForStats: TaskDto[] = [];
@@ -77,10 +73,14 @@ export class TaskComponent implements OnInit {
   isEditMode = false;
   isOverdueModalOpen = false;
   isPendingModalOpen = false;
-  isReasonModalOpen = false; 
+  isReasonModalOpen = false;
   
   selectedTaskId: string | null = null;
   deletionReason: string = '';
+  duplicateErrorMessage: boolean = false;
+
+  drawerWidth = 400; 
+  isResizing = false;
 
   hasCreatePermission = false;
   hasApprovePermission = false;
@@ -123,6 +123,27 @@ export class TaskComponent implements OnInit {
   }
 
   goBack(): void { this.router.navigate(['/projects']); }
+
+  startResize(event: MouseEvent): void {
+    this.isResizing = true;
+    event.preventDefault();
+    document.addEventListener('mousemove', this.onMouseMove);
+    document.addEventListener('mouseup', this.onMouseUp);
+  }
+
+  onMouseMove = (event: MouseEvent) => {
+    if (!this.isResizing) return;
+    const newWidth = window.innerWidth - event.clientX;
+    if (newWidth >= 300 && newWidth < window.innerWidth * 0.95) {
+      this.drawerWidth = newWidth;
+    }
+  };
+
+  onMouseUp = () => {
+    this.isResizing = false;
+    document.removeEventListener('mousemove', this.onMouseMove);
+    document.removeEventListener('mouseup', this.onMouseUp);
+  };
 
   private loadProjectInfo(): void {
     this.projectService.get(this.projectId).subscribe(res => {
@@ -173,37 +194,52 @@ export class TaskComponent implements OnInit {
       title: ['', [Validators.required, Validators.maxLength(256)]],
       description: [null],
       status: [TaskStatus.New, Validators.required],
-      weight: [1, [Validators.required, Validators.min(1), Validators.max(10)]], // TRỌNG SỐ CHO SLIDER
-      assignedUserIds: [[]],
-      dueDate: [null],
-      isApproved: [true]
+      weight: [1, [Validators.required, Validators.min(1), Validators.max(10)]],
+      assignedUserIds: [[], [Validators.required]], 
+      dueDate: [null, [Validators.required]], 
+      isApproved: [false]
     });
   }
 
   createTask(): void {
+    this.duplicateErrorMessage = false;
     this.isEditMode = false;
     this.selectedTaskId = null;
-    this.form.reset({ status: TaskStatus.New, weight: 1, projectId: this.projectId, isApproved: this.hasCreatePermission, assignedUserIds: [] });
+    this.form.reset({ 
+      status: TaskStatus.New, 
+      weight: 1, 
+      projectId: this.projectId, 
+      isApproved: this.hasApprovePermission, 
+      assignedUserIds: [] 
+    });
     this.form.enable(); 
     this.isModalOpen = true;
   }
 
   editTask(task: TaskDto): void {
-    this.isPendingModalOpen = false;
-    this.isOverdueModalOpen = false;
+    this.duplicateErrorMessage = false;
     this.isEditMode = true;
     this.selectedTaskId = task.id;
-    this.form.patchValue({ ...task, assignedUserIds: task.assignedUserIds || [] });
     
-    if (task.status === TaskStatus.Completed && !this.hasApprovePermission) {
-        this.form.disable();
-    } else if (!task.isApproved) {
-        this.form.enable();
-        this.form.get('status')?.disable();
-    } else {
-        this.form.enable();
+    let localDueDate = null;
+    if (task.dueDate) {
+      const dateStr = task.dueDate.endsWith('Z') ? task.dueDate.slice(0, -1) : task.dueDate;
+      localDueDate = new Date(dateStr);
     }
+
+    this.form.patchValue({
+      projectId: task.projectId,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      weight: task.weight,
+      assignedUserIds: task.assignedUserIds,
+      dueDate: localDueDate,
+      isApproved: task.isApproved 
+    });
+    
     this.isModalOpen = true;
+    this.isPendingModalOpen = false;
   }
 
   onSort(sort: { key: string; value: string | null }): void {
@@ -240,24 +276,60 @@ export class TaskComponent implements OnInit {
     this.taskService.delete(this.selectedTaskId!, this.deletionReason).subscribe(() => {
         this.message.success(this.l('::DeletedSuccess'));
         this.isReasonModalOpen = false;
-        this.refreshData(); // CẬP NHẬT TIẾN ĐỘ DỰ ÁN
+        this.refreshData(); 
         this.isPendingModalOpen = false;    
     });
   }
 
   save(): void {
-    if (this.form.invalid) return;
+    this.duplicateErrorMessage = false;
+    if (this.form.invalid) {
+      Object.values(this.form.controls).forEach(control => {
+        if (control.invalid) {
+          control.markAsDirty();
+          control.updateValueAndValidity({ onlySelf: true });
+        }
+      });
+      return;
+    }
+
+    const requestData = { 
+      ...this.form.value,
+      projectId: this.projectId 
+    };
+
+    if (requestData.dueDate) {
+      const d = new Date(requestData.dueDate);
+      const localTime = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+      requestData.dueDate = localTime.toISOString().slice(0, 19); 
+    }
+
+    const requestOptions = { skipHandleError: true };
+
+    const request = this.isEditMode
+      ? this.taskService.update(this.selectedTaskId!, requestData, requestOptions)
+      : this.taskService.create(requestData, requestOptions);
+
     this.saving = true;
-    const formData = this.form.getRawValue();
-    const request = this.isEditMode ? this.taskService.update(this.selectedTaskId!, formData) : this.taskService.create(formData);
     request.subscribe({
       next: () => {
-        this.message.success(this.l('::SaveSuccess'));
         this.isModalOpen = false;
-        this.refreshData(); // CẬP NHẬT TIẾN ĐỘ DỰ ÁN
+        this.form.reset();
+        this.refreshData(); 
         this.saving = false;
+        this.message.success(this.l('::SaveSuccess'));
       },
-      error: () => this.saving = false
+      error: (err) => {
+        this.saving = false;
+        const errorMsg = err?.error?.error?.message || err?.error?.error?.code || '';
+        
+        if (errorMsg.includes('Task Already Exists') || errorMsg.includes('TaskDuplicatedMessage')) {
+           this.duplicateErrorMessage = true;
+        } else {
+           this.message.error(errorMsg || 'Có lỗi xảy ra!');
+           console.error('Lưu thất bại', err);
+        }
+      }
     });
   }
 
@@ -285,10 +357,10 @@ export class TaskComponent implements OnInit {
   }
 
   private refreshData(): void { 
-    this.list.get(); 
+    this.loadTasks(); 
     this.loadOverdueTasks(); 
     this.loadPendingTasks(); 
-    this.loadProjectInfo(); // LẤY LẠI % TIẾN ĐỘ TỪ BACKEND
+    this.loadProjectInfo(); 
   }
 
   handleCancel(): void { this.isModalOpen = false; }

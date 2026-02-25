@@ -33,6 +33,27 @@ body, .task-page-container {
   }
 }
 
+/* ÉP CĂN GIỮA NÚT TRONG TẤT CẢ MODAL CỦA ABP/NG-ZORRO */
+::ng-deep .ant-modal-confirm-btns, 
+::ng-deep .ant-modal-footer {
+  width: 100% !important;
+  display: flex !important;
+  justify-content: center !important; /* Đẩy ra giữa */
+  float: none !important; /* Quan trọng: Xóa bỏ float để justify-content có tác dụng */
+  margin: 20px 0 10px 0 !important;
+  gap: 12px;
+}
+
+/* Chỉnh nút Đóng (Primary) cho đồng bộ phong cách bo tròn pill */
+::ng-deep .ant-modal-confirm-btns .ant-btn-primary {
+    border-radius: 50px !important;
+    padding: 0 40px !important;
+    height: 40px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    font-size: 13px;
+}
+
 /* Action Card Hover */
 .action-card {
   &:hover {
@@ -51,34 +72,6 @@ body, .task-page-container {
 
 .banner-clean {
   border-left: 6px solid #1890ff !important;
-}
-
-/* HIỆU ỨNG ĐẶC BIỆT CHO DỰ ÁN HOÀN THÀNH 100% */
-.project-completed {
-  /* Ép nền xanh lá cây gradient */
-  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%) !important;
-  border-color: #52c41a !important;
-  box-shadow: 0 10px 20px rgba(82, 196, 26, 0.3) !important;
-  transition: all 0.4s ease;
-
-  /* SỬA LỖI: Chỉ ép chữ trắng khi nằm trong card đã hoàn thành */
-  .text-black, h5, span, .x-small, i {
-    color: #ffffff !important;
-  }
-
-  /* Ép màu thanh Progress sang trắng để không bị chìm */
-  .ant-progress-bg {
-    background-color: #ffffff !important;
-  }
-
-  .text-muted, .text-white-50 {
-    color: rgba(255, 255, 255, 0.8) !important;
-  }
-  
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 15px 30px rgba(82, 196, 26, 0.5) !important;
-  }
 }
 
 /* LANDING PAGE V2 STYLES */
@@ -106,6 +99,7 @@ body, .task-page-container {
   .text-gradient {
     background: linear-gradient(90deg, var(--lp-primary), #69c0ff);
     -webkit-background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
   }
 
@@ -158,3 +152,21 @@ body, .task-page-container {
 }
 .animate-float { animation: float 4s infinite ease-in-out; }
 .animate-float-delayed { animation: float 4s infinite ease-in-out 1.5s; }
+
+/* THANH CO GIÃN CHO DRAWER */
+.drawer-resizer-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.3s;
+  z-index: 1000;
+
+  &:hover, &:active {
+    background: rgba(24, 144, 255, 0.3); /* Hiện màu xanh nhẹ khi hover/kéo */
+    border-left: 2px solid #1890ff;
+  }
+}

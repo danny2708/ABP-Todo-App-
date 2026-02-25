@@ -119,18 +119,33 @@
   </div>
 </div>
 
-<nz-drawer [nzVisible]="isModalOpen" [nzTitle]="drawerTitle" [nzWidth]="450" nzPlacement="right" (nzOnClose)="handleCancel()" [nzFooter]="drawerFooter">
+<nz-drawer 
+  [nzVisible]="isModalOpen" 
+  [nzTitle]="drawerTitle" 
+  [nzWidth]="drawerWidth" 
+  nzPlacement="right" 
+  (nzOnClose)="handleCancel()" 
+  [nzFooter]="drawerFooter">
+  
   <ng-template #drawerTitle>
     <span class="fw-bold text-black"><i nz-icon nzType="form" class="text-primary me-2"></i> {{ (isEditMode ? ('TaskManagement::Update' | abpLocalization) : ('TaskManagement::Create' | abpLocalization)) }}</span>
   </ng-template>
+  
   <ng-container *nzDrawerContent>
+    <div class="drawer-resizer-handle" (mousedown)="startResize($event)"></div>
+
     <form nz-form [formGroup]="form" nzLayout="vertical">
+      
+      <div *ngIf="duplicateErrorMessage" class="alert alert-danger p-2 mb-3 small" style="border-left: 4px solid #f5222d; background-color: #fff1f0; color: #cf1322;">
+        <i nz-icon nzType="warning" class="me-2"></i> {{ 'TaskManagement::Task Already Exists' | abpLocalization }}
+      </div>
+
       <nz-form-item class="mb-2">
         <nz-form-label nzRequired>{{ 'TaskManagement::Title' | abpLocalization }}</nz-form-label>
         <nz-form-control><input nz-input formControlName="title" /></nz-form-control>
       </nz-form-item>
 
-      <nz-form-item class="mb-4">
+      <nz-form-item class="mb-2">
         <nz-form-label nzRequired [nzTooltipTitle]="'TaskManagement::WeightTooltip' | abpLocalization">
           {{ 'TaskManagement::TaskWeight' | abpLocalization }}: <span class="text-primary fw-bold ms-2">{{ form.get('weight')?.value }}</span>
         </nz-form-label>
@@ -141,8 +156,9 @@
 
       <nz-form-item class="mb-2">
         <nz-form-label>{{ 'TaskManagement::Description' | abpLocalization }}</nz-form-label>
-        <nz-form-control><textarea nz-input formControlName="description" rows="3"></textarea></nz-form-control>
+        <nz-form-control><textarea nz-input formControlName="description" rows="2"></textarea></nz-form-control>
       </nz-form-item>
+
       <nz-form-item class="mb-2">
         <nz-form-label nzRequired>{{ 'TaskManagement::Status' | abpLocalization }}</nz-form-label>
         <nz-form-control>
@@ -151,30 +167,45 @@
           </nz-select>
         </nz-form-control>
       </nz-form-item>
+
       <nz-form-item class="mb-2">
-        <nz-form-label>{{ 'TaskManagement::AssignedTo' | abpLocalization }}</nz-form-label>
+        <nz-form-label nzRequired>{{ 'TaskManagement::AssignedTo' | abpLocalization }}</nz-form-label>
         <nz-form-control>
           <nz-select formControlName="assignedUserIds" nzMode="multiple" nzShowSearch nzAllowClear class="w-100" [nzPlaceHolder]="'TaskManagement::SelectUser' | abpLocalization">
             <nz-option *ngFor="let user of users" [nzLabel]="user.userName" [nzValue]="user.id"></nz-option>
           </nz-select>
         </nz-form-control>
       </nz-form-item>
+
       <nz-form-item class="mb-2">
-        <nz-form-label>{{ 'TaskManagement::DueDate' | abpLocalization }}</nz-form-label>
+        <nz-form-label nzRequired>{{ 'TaskManagement::DueDate' | abpLocalization }}</nz-form-label>
         <nz-form-control><nz-date-picker formControlName="dueDate" nzShowTime nzFormat="yyyy-MM-dd HH:mm" class="w-100"></nz-date-picker></nz-form-control>
       </nz-form-item>
+
     </form>
   </ng-container>
+
   <ng-template #drawerFooter>
-    <div class="d-flex justify-content-between">
-      <div *ngIf="isEditMode && !form.get('isApproved')?.value && hasApprovePermission">
-        <button nz-button nzType="primary" (click)="approveTask(selectedTaskId)" class="me-2">{{ 'TaskManagement::Approve' | abpLocalization }}</button>
-        <button nz-button nzDanger (click)="rejectTask(selectedTaskId)">{{ 'TaskManagement::Reject' | abpLocalization }}</button>
+    <div class="d-flex flex-column w-100 gap-2">
+      
+      <div *ngIf="isEditMode && !form.get('isApproved')?.value && hasApprovePermission" class="d-flex gap-2 w-100">
+        <button nz-button nzType="primary" (click)="approveTask(selectedTaskId)" class="rounded-pill bg-success border-0 shadow-sm d-flex justify-content-center align-items-center" style="flex: 1;">
+          <i nz-icon nzType="check-circle" class="me-1"></i> {{ 'TaskManagement::Approve' | abpLocalization }}
+        </button>
+        <button nz-button nzDanger nzType="default" (click)="rejectTask(selectedTaskId)" class="rounded-pill border-danger text-danger shadow-sm d-flex justify-content-center align-items-center" style="flex: 1;">
+          <i nz-icon nzType="stop" class="me-1"></i> {{ 'TaskManagement::Reject' | abpLocalization }}
+        </button>
       </div>
-      <div class="ms-auto">
-        <button nz-button (click)="handleCancel()" class="me-2">{{ 'TaskManagement::Cancel' | abpLocalization }}</button>
-        <button nz-button nzType="primary" (click)="save()" [disabled]="form.invalid || form.disabled">{{ 'TaskManagement::Save' | abpLocalization }}</button>
+
+      <div class="d-flex gap-2 w-100">
+        <button nz-button (click)="handleCancel()" class="rounded-pill border-dark text-dark shadow-sm d-flex justify-content-center align-items-center" style="flex: 1;">
+          <i nz-icon nzType="close-circle" class="me-1"></i> {{ 'TaskManagement::Cancel' | abpLocalization }}
+        </button>
+        <button nz-button nzType="primary" (click)="save()" [nzLoading]="saving" [disabled]="form.invalid || form.disabled" class="rounded-pill shadow-primary fw-bold d-flex justify-content-center align-items-center" style="flex: 1;">
+          <i nz-icon nzType="save" class="me-1"></i> {{ 'TaskManagement::Save' | abpLocalization }}
+        </button>
       </div>
+
     </div>
   </ng-template>
 </nz-drawer>
@@ -197,11 +228,7 @@
           </td>
           <td>{{ task.assignedUserName }}</td>
           <td>
-            <a (click)="editTask(task)" 
-               class="text-primary fw-bold text-decoration-underline hover-opacity"
-               style="transition: all 0.3s ease;">
-               {{ 'TaskManagement::ViewDetail' | abpLocalization }}
-            </a>
+            <a (click)="editTask(task)" class="text-primary fw-bold text-decoration-underline">{{ 'TaskManagement::ViewDetail' | abpLocalization }}</a>
             <nz-divider nzType="vertical"></nz-divider>
             <a class="text-danger" (click)="confirmDelete(task.id)"><i nz-icon nzType="delete"></i></a>
           </td>
@@ -211,10 +238,10 @@
   </ng-container>
 </nz-modal>
 
-<nz-modal [(nzVisible)]="isReasonModalOpen" [nzTitle]="'TaskManagement::DeleteReasonTitle' | abpLocalization" (nzOnOk)="deleteTaskWithReason()" (nzOnCancel)="isReasonModalOpen = false">
+<nz-modal [(nzVisible)]="isReasonModalOpen" [nzTitle]="'TaskManagement::Delete Reason' | abpLocalization" (nzOnOk)="deleteTaskWithReason()" (nzOnCancel)="isReasonModalOpen = false">
   <ng-container *nzModalContent>
-    <p class="fw-bold">{{ 'TaskManagement::PleaseInputReason' | abpLocalization }}</p>
-    <textarea nz-input [(ngModel)]="deletionReason" rows="4" [placeholder]="'TaskManagement::ReasonPlaceholder' | abpLocalization"></textarea>
+    <p class="fw-bold text-center">{{ 'TaskManagement::Please Input Reason' | abpLocalization }}</p>
+    <textarea nz-input [(ngModel)]="deletionReason" rows="4" [placeholder]="'TaskManagement::Reason' | abpLocalization"></textarea>
   </ng-container>
 </nz-modal>
 

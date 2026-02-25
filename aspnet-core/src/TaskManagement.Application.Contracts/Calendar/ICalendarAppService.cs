@@ -8,9 +8,8 @@ using Volo.Abp.Application.Services;
 
 namespace TaskManagement.Calendar;
 
-[RemoteService(IsEnabled = true)] // Ép hệ thống nhận diện
+[RemoteService(IsEnabled = true)] 
 public interface ICalendarAppService : IApplicationService
 {
-    // Truyền trực tiếp biến thay vì dùng Object
     Task<List<TaskDto>> GetCalendarTasksAsync(DateTime? startDate, DateTime? endDate);
 }

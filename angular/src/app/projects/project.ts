@@ -42,7 +42,7 @@ export class ProjectComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private message = inject(NzMessageService);
-  public permission = inject(PermissionService); // Đảm bảo là public
+  public permission = inject(PermissionService); 
   private localizationService = inject(LocalizationService);
   private configState = inject(ConfigStateService);
 

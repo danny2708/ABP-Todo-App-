@@ -10,10 +10,13 @@ public class CreateUpdateTaskDto
         public string Title { get; set; } = default!;
         public string? Description { get; set; }
         public TaskStatus Status { get; set; }
-        public DateTime? DueDate { get; set; }
+        
+        [Required]
+        public DateTime DueDate { get; set; }
         public int Weight { get; set; } = 1;
         
-        // Danh sách nhiều người nhận việc
+        [Required]
+        [MinLength(1, ErrorMessage = "TaskManagement::AtLeastOneUserRequired")] 
         public List<Guid> AssignedUserIds { get; set; } = new();
     }
 }

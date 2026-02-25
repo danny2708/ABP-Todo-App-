@@ -32,6 +32,7 @@ function configureRoutes() {
       iconClass: 'fas fa-calendar-alt', 
       order: 3, 
       layout: eLayoutType.application,
+      requiredPolicy: 'TaskManagement.Calendar',
     },
   ]);
 }

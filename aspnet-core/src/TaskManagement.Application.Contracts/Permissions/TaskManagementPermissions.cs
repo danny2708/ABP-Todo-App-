@@ -26,4 +26,10 @@ public static class TaskManagementPermissions
         public const string Approve = Default + ".Approve"; 
         public const string Denied = Default + ".Denied"; 
     }
+
+    // NHÓM CALENDAR
+    public static class Calendar
+    {
+        public const string Default = GroupName + ".Calendar";
+    }
 }
