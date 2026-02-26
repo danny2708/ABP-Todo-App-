@@ -38,6 +38,7 @@ export const appConfig: ApplicationConfig = {
           }
           return registerLocaleForEsBuild()(locale);
         },
+        skipGetAppConfiguration: false,
       }),
     ),
     provideAbpOAuth(),

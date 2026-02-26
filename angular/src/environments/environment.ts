@@ -11,24 +11,29 @@ const oAuthConfig = {
   requireHttps: true,
 };
 
-export const environment = {
+export const environment: Environment = {
   production: false,
+
   application: {
-    baseUrl,
+    baseUrl: baseUrl,
     name: 'Task Flow',
   },
+
   localization: {
-    defaultResourceName: 'TaskManagement', 
+    defaultResourceName: 'TaskManagement',
   },
+
   oAuthConfig,
+
   apis: {
     default: {
       url: 'https://localhost:44319',
       rootNamespace: 'TaskManagement',
     },
+
     AbpAccountPublic: {
       url: oAuthConfig.issuer,
       rootNamespace: 'AbpAccountPublic',
     },
   },
-} as Environment;
+};

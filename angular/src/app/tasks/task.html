@@ -4,12 +4,12 @@
     <div class="row align-items-center">
       <div class="col-md-5">
         <div class="d-flex align-items-center">
-          <button type="button" nz-button nzType="text" (click)='goBack()' class="me-3 p-0 hover-scale" title="Go back">
+          <button nz-button nzType="text" type="button" (click)='goBack()' class="me-3 p-0 hover-scale" title="Go back">
             <i nz-icon nzType="arrow-left" class="text-primary fs-3"></i>
           </button>
           <div>
             <h2 class="text-black fw-bold mb-0">{{ projectName }}</h2>
-            <p class="text-muted small mb-0">{{ 'TaskManagement::Project Progress' | abpLocalization }}</p>
+            <p class="text-muted small mb-0">{{ 'TaskManagement::ProjectProgress' | abpLocalization }}</p>
           </div>
         </div>
       </div>
@@ -109,8 +109,8 @@
             <td><span class="small fw-bold" [class.text-danger]="isOverdue(task.dueDate)">{{ task.dueDate | date:'dd/MM/yyyy HH:mm' }}</span></td>
             <td class="text-end">
               <div class="row-actions">
-                <button type="button" nz-button nzType="text" (click)="editTask(task)" title="Edit task"><i nz-icon nzType="edit" class="text-primary fs-5"></i></button>
-                <button type="button" *ngIf="canDeleteTask(task)" nz-button nzType="text" (click)="confirmDelete(task.id)" title="Delete task"><i nz-icon nzType="delete" class="text-danger fs-5"></i></button>
+                <button nz-button nzType="text" type="button" (click)="editTask(task)" title="Edit task"><i nz-icon nzType="edit" class="text-primary fs-5"></i></button>
+                <button *ngIf="canDeleteTask(task)" nz-button nzType="text" type="button" (click)="confirmDelete(task.id)" title="Delete task"><i nz-icon nzType="delete" class="text-danger fs-5"></i></button>
               </div>
             </td>
           </tr>
