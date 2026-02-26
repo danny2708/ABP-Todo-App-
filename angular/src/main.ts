@@ -9,4 +9,5 @@ if (environment.production) {
   enableProdMode();
 }
 
+(window as any).ngDevMode = false;
 bootstrapApplication(AppComponent, appConfig).catch(err => console.error(err));
