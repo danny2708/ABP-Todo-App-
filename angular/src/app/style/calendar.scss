@@ -1,4 +1,32 @@
 .calendar-container {
+  .calendar-main-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1f1f1f;
+  }
+
+  .filter-card {
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .filter-label {
+    font-weight: 600;
+    font-size: 0.75rem;
+    color: #8c8c8c;
+    text-transform: uppercase;
+  }
+
+  .month-view-container {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #f0f0f0;
+  }
+
+  /* Định dạng sự kiện trong ô lịch tháng */
   .events {
     .task-item {
       overflow: hidden;
@@ -8,99 +36,156 @@
     }
   }
 
-  /* Định dạng lại Ant Design Tabs/Radio */
   ::ng-deep .ant-radio-button-wrapper-checked {
     background-color: #1890ff !important;
     color: white !important;
   }
 
   /* ============================================================ */
-  /* CSS GRID TÙY CHỈNH CHO WEEK VIEW (Thay thế Tailwind)       */
+  /* WEEK VIEW GRID SYSTEM - CLEAN STYLE */
   /* ============================================================ */
+  
+  .week-view-outer {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #f0f0f0;
+  }
+
+  .week-view-scroll-container {
+    position: relative;
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 65vh;
+    background: #fff;
+    
+    /* Tùy chỉnh thanh cuộn */
+    &::-webkit-scrollbar { width: 6px; height: 6px; }
+    &::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; }
+  }
+
+  .week-view-min-width {
+    min-width: 800px;
+  }
+
   .week-grid {
     display: grid;
-    /* 1 cột cố định 60px cho giờ, 7 cột còn lại chia đều cho 7 ngày */
-    grid-template-columns: 60px repeat(7, minmax(100px, 1fr));
+    grid-template-columns: 70px repeat(7, minmax(100px, 1fr));
   }
 
-  /* Chiều cao của mỗi dòng giờ */
-  .time-slot {
-    height: 45px; 
+  .week-header-sticky {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #fff;
+    border-bottom: 1px solid #f0f0f0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   }
 
-  /* Hiệu ứng di chuột vào cột ngày */
-  .day-column {
-    transition: background-color 0.2s;
-    &:hover {
-      background-color: rgba(0, 0, 0, 0.02);
+  .hour-label-cell {
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #8c8c8c;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff; /* Xóa nền xám */
+  }
+
+  .day-header-cell {
+    padding: 8px;
+    text-align: center;
+    background: #fff;
+    height: 60px;
+    
+    .day-number {
+      font-size: 1.1rem;
+      font-weight: 700;
     }
   }
 
-  /* ============================================================ */
-  /* STYLE CHO CÁC KHỐI CÔNG VIỆC (TASKS) TRONG WEEK VIEW         */
-  /* ============================================================ */
-  .task-block {
-    transition: transform 0.2s, box-shadow 0.2s;
-    overflow: hidden;
+  /* Body Time Slots */
+  .time-slot-label {
+    height: 45px;
+    padding: 8px;
+    font-size: 12px;
+    color: #8c8c8c;
+    text-align: right;
+    background: #fff; /* Xóa nền xám */
+  }
+
+  .time-slot-grid {
+    height: 45px;
+    box-sizing: border-box;
+  }
+
+  .day-column {
+    position: relative;
+    transition: background-color 0.2s;
+    &:hover { background-color: rgba(24, 144, 255, 0.01); }
+  }
+
+  /* Task Blocks Rendering */
+  .task-blocks-container {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    padding: 1px;
+    pointer-events: none;
+  }
+
+  .task-block-item {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    border-radius: 4px;
+    padding: 4px;
+    cursor: pointer;
     z-index: 10;
+    overflow: hidden;
+    pointer-events: auto;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
     
     &:hover {
-      transform: scale(1.02);
+      transform: scale(1.01);
       z-index: 20;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1) !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     }
 
-    .task-title {
-      font-size: 11px;
-      line-height: 1.2;
-    }
-    .task-subtitle {
-      font-size: 10px;
-      opacity: 0.85;
+    .task-title-small { font-size: 11px; font-weight: 700; line-height: 1.2; }
+    .task-subtitle-small { font-size: 10px; opacity: 0.9; }
+  }
+
+  /* List View Styles */
+  .list-task-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    padding: 12px;
+    border-radius: 6px;
+    border: 1px solid #f0f0f0;
+    background: #fff;
+    
+    &:hover {
+      border-color: #d9d9d9;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
   }
 
-  /* Định nghĩa màu sắc Semantic an toàn (Mới, Đang xử lý, Hoàn thành) */
-  .task-new {
-    background-color: #e6f7ff;
-    border-left-color: #1890ff !important;
-    color: #0050b3;
-  }
-  .task-inprogress {
-    background-color: #fff7e6;
-    border-left-color: #fa8c16 !important;
-    color: #ad4e00;
-  }
-  .task-completed {
-    background-color: #f6ffed;
-    border-left-color: #52c41a !important;
-    color: #237804;
-  }
-
-  /* Các class hỗ trợ */
-  .pointer-events-none { pointer-events: none; }
-  .pointer-events-auto { pointer-events: auto; }
-
-  /* Tùy chỉnh thanh cuộn cho Week View */
-  .overflow-auto {
-    &::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    &::-webkit-scrollbar-thumb {
-      background-color: #d1d5db;
-      border-radius: 10px;
-    }
-  }
+  /* Task Status Colors */
+  .task-new { background-color: #e6f7ff; border-left-color: #1890ff !important; color: #0050b3; }
+  .task-inprogress { background-color: #fff7e6; border-left-color: #fa8c16 !important; color: #ad4e00; }
+  .task-completed { background-color: #f6ffed; border-left-color: #52c41a !important; color: #237804; }
+  .bg-group-card { background-color: #f0f5ff !important; border-left-color: #2f54eb !important; }
 }
 
-/* CSS Hiển thị đường kẻ đôi (double line) báo hiệu bị ngắt quãng giờ */
+/* Ký hiệu ngắt quãng giờ */
 .border-top-jump {
-  border-top: 3px double #d9d9d9 !important;
-  background-color: rgba(0, 0, 0, 0.01);
-}
-
-.bg-group-card {
-  background-color: #f0f5ff !important;
-  border-left-color: #2f54eb !important;
+  border-top: 3px double #f0f0f0 !important;
+  background-color: rgba(250, 250, 250, 0.5);
 }

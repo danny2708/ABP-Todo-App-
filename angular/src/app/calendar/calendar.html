@@ -1,8 +1,8 @@
 <div class="calendar-container p-4 bg-white min-vh-100"> 
   
-  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+  <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-2 gap-3">
     <div>
-      <h2 class="fs-4 fw-bold text-dark mb-1">
+      <h2 class="calendar-main-title">
         <i nz-icon nzType="calendar" class="text-primary me-2"></i> 
         {{ 'TaskManagement::CalendarSchedule' | abpLocalization }}
       </h2>
@@ -16,7 +16,7 @@
     </nz-radio-group>
   </div>
 
-  <nz-card class="border-0 shadow-sm rounded mb-4" [nzBodyStyle]="{'padding': '16px'}">
+  <nz-card class="filter-card mb-2" [nzBodyStyle]="{'padding': '16px'}">
     <div class="row align-items-center">
       <div class="col-md-5 mb-3 mb-md-0">
         <nz-input-group [nzPrefix]="searchIcon" class="rounded">
@@ -27,7 +27,7 @@
       
       <div class="col-md-7">
         <div class="d-flex align-items-center gap-3 w-100">
-          <span class="fw-bold small text-muted text-uppercase text-nowrap">{{ 'TaskManagement::Projects' | abpLocalization }}:</span>
+          <span class="filter-label text-nowrap">{{ 'TaskManagement::Projects' | abpLocalization }}:</span>
           <nz-select
             nzMode="multiple"
             [nzPlaceHolder]="'TaskManagement::SelectProject' | abpLocalization"
@@ -45,7 +45,7 @@
 
   <nz-spin [nzSpinning]="loading">
     
-    <div *ngIf="viewMode === 'month'" class="bg-white rounded shadow-sm border p-2">
+    <div *ngIf="viewMode === 'month'" class="month-view-container p-2">
       <nz-calendar [(ngModel)]="selectedDate" (nzPanelChange)="loadCalendarData()">
         <ul *nzDateCell="let date" class="events m-0 p-0 list-unstyled">
           <li *ngFor="let item of getTasksForMonth(date)" class="task-item">
@@ -55,7 +55,7 @@
       </nz-calendar>
     </div>
 
-    <div *ngIf="viewMode === 'week'" class="bg-white rounded shadow-sm border overflow-hidden">
+    <div *ngIf="viewMode === 'week'" class="week-view-outer overflow-hidden">
       <div class="d-flex justify-content-between align-items-center p-3 border-bottom bg-white">
         <h5 class="fw-bold mb-0">{{ weekDaysList[0] | date:'dd/MM' }} - {{ weekDaysList[6] | date:'dd/MM/yyyy' }}</h5>
         <div class="d-flex gap-2">
@@ -65,60 +65,61 @@
         </div>
       </div>
 
-      <div class="week-grid border-bottom bg-white"> 
-        <div class="p-2 text-center small fw-bold text-muted border-end">{{ 'TaskManagement::Hour' | abpLocalization }}</div>
-        <div *ngFor="let day of weekDaysList" class="p-2 text-center border-end">
-          <div class="small text-muted text-uppercase">{{ day | date:'EEE' }}</div>
-          <div class="fs-5 fw-bold" [ngClass]="{'text-primary': (day | date:'dd/MM/yyyy') === (selectedDate | date:'dd/MM/yyyy')}">{{ day | date:'dd' }}</div>
-        </div>
-      </div>
-
-      <div class="position-relative overflow-auto" style="max-height: 65vh;">
-        <div class="week-grid position-relative" style="min-width: 800px;">
+      <div class="week-view-scroll-container">
+        <div class="week-view-min-width">
           
-          <div class="border-end bg-white">
-            <ng-container *ngFor="let hour of activeHours; let i = index">
-              <div class="time-slot p-2 small text-muted text-end border-bottom"
-                   [ngClass]="{'border-top-jump': i > 0 && activeHours[i] - activeHours[i-1] > 1}">
-                {{ hour.toString().padStart(2, '0') }}:00
-              </div>
-            </ng-container>
+          <div class="week-grid week-header-sticky"> 
+            <div class="hour-label-cell border-end">{{ 'TaskManagement::Hour' | abpLocalization }}</div>
+            <div *ngFor="let day of weekDaysList" class="day-header-cell border-end">
+              <div class="small text-muted text-uppercase">{{ day | date:'EEE' }}</div>
+              <div class="day-number" [ngClass]="{'text-primary': (day | date:'dd/MM/yyyy') === (selectedDate | date:'dd/MM/yyyy')}">{{ day | date:'dd' }}</div>
+            </div>
           </div>
 
-          <div *ngFor="let day of weekDaysList" class="position-relative border-end bg-white day-column">
-            <ng-container *ngFor="let hour of activeHours; let i = index">
-              <div class="time-slot border-bottom"
-                   [ngClass]="{'border-top-jump': i > 0 && activeHours[i] - activeHours[i-1] > 1}">
-              </div>
-            </ng-container>
+          <div class="week-grid position-relative">
+            <div class="border-end bg-white">
+              <ng-container *ngFor="let hour of activeHours; let i = index">
+                <div class="time-slot-label border-bottom"
+                     [ngClass]="{'border-top-jump': i > 0 && activeHours[i] - activeHours[i-1] > 1}">
+                  {{ hour.toString().padStart(2, '0') }}:00
+                </div>
+              </ng-container>
+            </div>
 
-            <div class="position-absolute w-100 h-100 top-0 start-0 p-1 pointer-events-none">
-              <div *ngFor="let group of getGroupsForWeekDay(day)"
-                   class="position-absolute rounded p-1 cursor-pointer shadow-sm border-start border-4 task-block pointer-events-auto"
-                   [ngClass]="{
-                     'task-new': group.tasks[0].status === 0,
-                     'task-inprogress': group.tasks[0].status === 1,
-                     'task-completed': group.tasks[0].status === 2,
-                     'bg-group-card': group.isGroup
-                   }"
-                   [style.top.px]="group.topPx + 2"
-                   [style.height.px]="group.heightPx - 4"
-                   [style.left.px]="2"
-                   [style.right.px]="2"
-                   (click)="openGroupModal(group)">
-                
-                <ng-container *ngIf="!group.isGroup">
-                  <div class="task-title fw-bold text-truncate">{{ group.tasks[0].title }}</div>
-                  <div class="task-subtitle small text-truncate mt-1"><i nz-icon nzType="project"></i> {{ group.tasks[0].assignedUserName }}</div>
-                </ng-container>
+            <div *ngFor="let day of weekDaysList" class="day-column border-end bg-white">
+              <ng-container *ngFor="let hour of activeHours; let i = index">
+                <div class="time-slot-grid border-bottom"
+                    [ngClass]="{'border-top-jump': i > 0 && activeHours[i] - activeHours[i-1] > 1}">
+                </div>
+              </ng-container>
 
-                <ng-container *ngIf="group.isGroup">
-                  <div class="task-title fw-bold text-truncate text-primary"><i nz-icon nzType="appstore" class="me-1"></i> {{ 'TaskManagement::TaskGroup' | abpLocalization }}</div>
-                  <div class="task-subtitle small text-truncate mt-1 fw-bold text-dark">{{ group.tasks.length }} {{ 'TaskManagement::OverlappingTasks' | abpLocalization }}</div>
-                </ng-container>
+              <div class="task-blocks-container">
+                <div *ngFor="let group of getGroupsForWeekDay(day)"
+                     class="task-block-item shadow-sm border-start border-4"
+                     [ngClass]="{
+                       'task-new': group.tasks[0].status === 0,
+                       'task-inprogress': group.tasks[0].status === 1,
+                       'task-completed': group.tasks[0].status === 2,
+                       'bg-group-card': group.isGroup
+                     }"
+                     [style.top.px]="group.topPx + 2"
+                     [style.height.px]="group.heightPx - 4"
+                     (click)="openGroupModal(group)">
+                  
+                  <ng-container *ngIf="!group.isGroup">
+                    <div class="task-title-small text-truncate">{{ group.tasks[0].title }}</div>
+                    <div class="task-subtitle-small text-truncate mt-1"><i nz-icon nzType="project"></i> {{ group.tasks[0].assignedUserName }}</div>
+                  </ng-container>
+
+                  <ng-container *ngIf="group.isGroup">
+                    <div class="task-title-small text-truncate text-primary"><i nz-icon nzType="appstore" class="me-1"></i> {{ 'TaskManagement::TaskGroup' | abpLocalization }}</div>
+                    <div class="task-subtitle-small text-truncate mt-1 fw-bold text-dark">{{ group.tasks.length }} {{ 'TaskManagement::OverlappingTasks' | abpLocalization }}</div>
+                  </ng-container>
+                </div>
               </div>
             </div>
           </div>
+          
         </div>
       </div>
     </div>
@@ -132,7 +133,7 @@
         </div>
         
         <div class="d-flex flex-column gap-2">
-          <div *ngFor="let task of group[1]" class="d-flex justify-content-between align-items-start p-2 rounded border bg-white shadow-sm-hover transition-all"> 
+          <div *ngFor="let task of group[1]" class="list-task-row transition-all"> 
             <div>
               <h6 class="fw-bold mb-1">{{ task.title }}</h6>
               <div class="d-flex gap-3 small text-muted">

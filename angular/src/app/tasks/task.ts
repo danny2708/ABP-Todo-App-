@@ -108,11 +108,24 @@ export class TaskComponent implements OnInit {
     this.hasApprovePermission = this.permissionService.getGrantedPolicy('TaskManagement.Tasks.Approve');
 
     this.buildForm();
+    this.setupAssignmentGuard(); // Đăng ký logic bảo vệ danh sách người thực hiện
+    
     this.loadProjectInfo();
     this.loadUsers();
     this.loadTasks();
     this.loadOverdueTasks();
     this.loadPendingTasks();
+  }
+
+  // LOGIC NGĂN CHẶN XÓA CHÍNH MÌNH
+  private setupAssignmentGuard(): void {
+    this.form.get('assignedUserIds')?.valueChanges.subscribe((ids: string[]) => {
+      // Chỉ áp dụng logic này khi đang tạo mới HOẶC nếu người dùng là nhân viên bình thường
+      if (this.currentUser?.id && ids && !ids.includes(this.currentUser.id)) {
+        // Tự động thêm lại ID của chính mình vào danh sách
+        this.form.get('assignedUserIds')?.setValue([this.currentUser.id, ...ids], { emitEvent: false });
+      }
+    });
   }
 
   get filteredOverdueTasks() {
@@ -210,7 +223,8 @@ export class TaskComponent implements OnInit {
       weight: 1, 
       projectId: this.projectId, 
       isApproved: this.hasApprovePermission, 
-      assignedUserIds: [] 
+      // MẶC ĐỊNH CHỌN CHÍNH MÌNH KHI TẠO
+      assignedUserIds: [this.currentUser.id] 
     });
     this.form.enable(); 
     this.isModalOpen = true;
@@ -324,10 +338,10 @@ export class TaskComponent implements OnInit {
         const errorMsg = err?.error?.error?.message || err?.error?.error?.code || '';
         
         if (errorMsg.includes('Task Already Exists') || errorMsg.includes('TaskDuplicatedMessage')) {
-           this.duplicateErrorMessage = true;
+          this.duplicateErrorMessage = true;
         } else {
-           this.message.error(errorMsg || 'Có lỗi xảy ra!');
-           console.error('Lưu thất bại', err);
+          this.message.error(errorMsg || 'Có lỗi xảy ra!');
+          console.error('Lưu thất bại', err);
         }
       }
     });

@@ -94,6 +94,7 @@ namespace TaskManagement.Tasks
 
         public async Task<TaskDto> CreateAsync(CreateUpdateTaskDto input)
         {
+            // 1. Kiểm tra trùng lặp 
             var isDuplicate = await _taskRepository.AnyAsync(t => 
                 t.ProjectId == input.ProjectId && 
                 t.Title.ToLower() == input.Title.ToLower() &&
@@ -107,8 +108,8 @@ namespace TaskManagement.Tasks
                 throw new UserFriendlyException(L["TaskManagement::Task Already Exists With Same Details"]);
             }
 
+            // 2. Kiểm tra quyền hạn 
             var isBoss = await IsBossOfProject(input.ProjectId);
-            // Kiểm tra thêm quyền Approve chung của hệ thống (Ví dụ Admin hệ thống)
             var hasApprovePermission = await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Approve);
             
             if (!isBoss)
@@ -118,6 +119,7 @@ namespace TaskManagement.Tasks
                 if (!isMember) throw new UserFriendlyException(L["TaskManagement::No Permission To Create Task"]);
             }
 
+            // 3. Khởi tạo Task
             var task = new AppTask(
                     GuidGenerator.Create(),
                     input.ProjectId,
@@ -128,10 +130,24 @@ namespace TaskManagement.Tasks
 
             task.Description = input.Description;
             task.DueDate = input.DueDate;
-            
             task.IsApproved = isBoss || hasApprovePermission;
 
-            foreach (var userId in input.AssignedUserIds)
+            // Tạo một danh sách ID tạm thời từ input
+            var finalAssignedIds = new List<Guid>(input.AssignedUserIds);
+
+            // Nếu người tạo KHÔNG phải Boss/Admin (tức là nhân viên bình thường đề xuất)
+            if (!isBoss && !hasApprovePermission)
+            {
+                var currentUserId = CurrentUser.Id ?? Guid.Empty;
+                // Nếu trong danh sách gán chưa có tên chính họ, thì tự động thêm vào
+                if (currentUserId != Guid.Empty && !finalAssignedIds.Contains(currentUserId))
+                {
+                    finalAssignedIds.Add(currentUserId);
+                }
+            }
+
+            // Gán danh sách cuối cùng vào Task Assignments
+            foreach (var userId in finalAssignedIds)
             {
                 task.AddAssignment(userId);
             }
@@ -241,8 +257,27 @@ namespace TaskManagement.Tasks
         public async Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId)
         {
             var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
-            var tasks = await queryable.Where(t => t.ProjectId == projectId && t.DueDate < Clock.Now).ToListAsync();
+            var currentUserId = CurrentUser.Id;
             
+            // 1. Kiểm tra xem người dùng hiện tại có phải sếp/admin không
+            var isBoss = await IsBossOfProject(projectId);
+
+            // 2. Lọc cơ bản: Đúng dự án + Đã quá hạn + Đã được phê duyệt (Không lấy task nháp)
+            queryable = queryable.Where(t => 
+                t.ProjectId == projectId && 
+                t.DueDate < Clock.Now && 
+                t.IsApproved == true
+            );
+
+            // 3. Nếu KHÔNG phải sếp, chỉ lấy task của chính nhân viên đó
+            if (!isBoss)
+            {
+                queryable = queryable.Where(t => 
+                    t.Assignments.Any(a => a.UserId == currentUserId) || t.CreatorId == currentUserId
+                );
+            }
+
+            var tasks = await AsyncExecuter.ToListAsync(queryable);
             var dtos = ObjectMapper.Map<List<AppTask>, List<TaskDto>>(tasks);
 
             foreach (var dto in dtos)
@@ -258,12 +293,11 @@ namespace TaskManagement.Tasks
                 }
                 else
                 {
-                    dto.AssignedUserName = L["Unassigned"];
+                    dto.AssignedUserName = L["TaskManagement::Unassigned"];
                 }
             }
             return new PagedResultDto<TaskDto>(dtos.Count, dtos);
         }
-
         public async Task<ListResultDto<UserLookupDto>> GetUserLookupAsync()
         {
             var users = await _userRepository.GetListAsync();
