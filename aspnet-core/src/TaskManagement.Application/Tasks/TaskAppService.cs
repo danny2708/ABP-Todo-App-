@@ -12,6 +12,9 @@ using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
 using System.Linq.Dynamic.Core;
 using Microsoft.EntityFrameworkCore;
+// THÊM CÁC NAMESPACE MỚI CHO SIGNALR
+using Microsoft.AspNetCore.SignalR;
+using TaskManagement.Hubs; 
 
 namespace TaskManagement.Tasks
 {
@@ -21,15 +24,19 @@ namespace TaskManagement.Tasks
         private readonly ITaskRepository _taskRepository;
         private readonly IRepository<IdentityUser, Guid> _userRepository;
         private readonly IRepository<Project, Guid> _projectRepository;
+        // KHAI BÁO HUB CONTEXT
+        private readonly IHubContext<NotificationHub> _hubContext;
 
         public TaskAppService(
             ITaskRepository repository,
             IRepository<IdentityUser, Guid> userRepository,
-            IRepository<Project, Guid> projectRepository)
+            IRepository<Project, Guid> projectRepository,
+            IHubContext<NotificationHub> hubContext) // INJECT HUB
         {
             _taskRepository = repository;
             _userRepository = userRepository;
             _projectRepository = projectRepository;
+            _hubContext = hubContext;
         }
 
         public async Task<TaskDto> GetAsync(Guid id)
@@ -94,7 +101,6 @@ namespace TaskManagement.Tasks
 
         public async Task<TaskDto> CreateAsync(CreateUpdateTaskDto input)
         {
-            // 1. Kiểm tra trùng lặp 
             var isDuplicate = await _taskRepository.AnyAsync(t => 
                 t.ProjectId == input.ProjectId && 
                 t.Title.ToLower() == input.Title.ToLower() &&
@@ -108,7 +114,6 @@ namespace TaskManagement.Tasks
                 throw new UserFriendlyException(L["TaskManagement::Task Already Exists With Same Details"]);
             }
 
-            // 2. Kiểm tra quyền hạn 
             var isBoss = await IsBossOfProject(input.ProjectId);
             var hasApprovePermission = await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Approve);
             
@@ -119,7 +124,6 @@ namespace TaskManagement.Tasks
                 if (!isMember) throw new UserFriendlyException(L["TaskManagement::No Permission To Create Task"]);
             }
 
-            // 3. Khởi tạo Task
             var task = new AppTask(
                     GuidGenerator.Create(),
                     input.ProjectId,
@@ -132,28 +136,50 @@ namespace TaskManagement.Tasks
             task.DueDate = input.DueDate;
             task.IsApproved = isBoss || hasApprovePermission;
 
-            // Tạo một danh sách ID tạm thời từ input
             var finalAssignedIds = new List<Guid>(input.AssignedUserIds);
 
-            // Nếu người tạo KHÔNG phải Boss/Admin (tức là nhân viên bình thường đề xuất)
             if (!isBoss && !hasApprovePermission)
             {
                 var currentUserId = CurrentUser.Id ?? Guid.Empty;
-                // Nếu trong danh sách gán chưa có tên chính họ, thì tự động thêm vào
                 if (currentUserId != Guid.Empty && !finalAssignedIds.Contains(currentUserId))
                 {
                     finalAssignedIds.Add(currentUserId);
                 }
             }
 
-            // Gán danh sách cuối cùng vào Task Assignments
             foreach (var userId in finalAssignedIds)
             {
                 task.AddAssignment(userId);
             }
 
             await _taskRepository.InsertAsync(task);
-            return ObjectMapper.Map<AppTask, TaskDto>(task);
+            var resultDto = ObjectMapper.Map<AppTask, TaskDto>(task);
+
+            // REALTIME: Gửi thông báo dựa trên trạng thái phê duyệt
+            if (!task.IsApproved)
+            {
+                // Nếu là đề xuất, gửi cho PM (Project Manager) của dự án đó
+                var project = await _projectRepository.GetAsync(task.ProjectId);
+                await _hubContext.Clients.User(project.ProjectManagerId.ToString()).SendAsync("ReceiveNotification", new {
+                    Type = "NewTaskProposed",
+                    Message = $"{CurrentUser.UserName} vừa đề xuất công việc: {task.Title}",
+                    TaskId = task.Id
+                });
+            }
+            else
+            {
+                // Nếu PM tạo task đã duyệt, gửi cho tất cả những người được gán
+                foreach (var userId in finalAssignedIds.Where(id => id != CurrentUser.Id))
+                {
+                    await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", new {
+                        Type = "TaskAssigned",
+                        Message = $"Bạn được gán công việc mới: {task.Title}",
+                        TaskId = task.Id
+                    });
+                }
+            }
+
+            return resultDto;
         }
 
         public async Task<TaskDto> ApproveAsync(Guid id)
@@ -164,6 +190,17 @@ namespace TaskManagement.Tasks
             task.IsApproved = true;
             task.IsRejected = false;
             await _taskRepository.UpdateAsync(task);
+
+            // REALTIME: Thông báo cho người đề xuất rằng task đã được duyệt
+            if (task.CreatorId.HasValue)
+            {
+                await _hubContext.Clients.User(task.CreatorId.Value.ToString()).SendAsync("ReceiveNotification", new {
+                    Type = "TaskApproved",
+                    Message = $"Công việc '{task.Title}' của bạn đã được phê duyệt.",
+                    TaskId = task.Id
+                });
+            }
+
             return ObjectMapper.Map<AppTask, TaskDto>(task);
         }
 
@@ -174,6 +211,16 @@ namespace TaskManagement.Tasks
 
             task.IsRejected = true;
             await _taskRepository.UpdateAsync(task);
+
+            // REALTIME: Thông báo cho người đề xuất rằng task đã bị từ chối
+            if (task.CreatorId.HasValue)
+            {
+                await _hubContext.Clients.User(task.CreatorId.Value.ToString()).SendAsync("ReceiveNotification", new {
+                    Type = "TaskRejected",
+                    Message = $"Yêu cầu công việc '{task.Title}' đã bị từ chối.",
+                    TaskId = task.Id
+                });
+            }
         }
 
         public async Task<TaskDto> UpdateAsync(Guid id, CreateUpdateTaskDto input)
@@ -258,18 +305,14 @@ namespace TaskManagement.Tasks
         {
             var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
             var currentUserId = CurrentUser.Id;
-            
-            // 1. Kiểm tra xem người dùng hiện tại có phải sếp/admin không
             var isBoss = await IsBossOfProject(projectId);
 
-            // 2. Lọc cơ bản: Đúng dự án + Đã quá hạn + Đã được phê duyệt (Không lấy task nháp)
             queryable = queryable.Where(t => 
                 t.ProjectId == projectId && 
                 t.DueDate < Clock.Now && 
                 t.IsApproved == true
             );
 
-            // 3. Nếu KHÔNG phải sếp, chỉ lấy task của chính nhân viên đó
             if (!isBoss)
             {
                 queryable = queryable.Where(t => 
@@ -298,6 +341,7 @@ namespace TaskManagement.Tasks
             }
             return new PagedResultDto<TaskDto>(dtos.Count, dtos);
         }
+
         public async Task<ListResultDto<UserLookupDto>> GetUserLookupAsync()
         {
             var users = await _userRepository.GetListAsync();

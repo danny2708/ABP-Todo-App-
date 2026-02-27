@@ -6,6 +6,9 @@ using Volo.Abp.Modularity;
 using Volo.Abp.PermissionManagement;
 using Volo.Abp.SettingManagement;
 using Volo.Abp.TenantManagement;
+using Microsoft.AspNetCore.SignalR;
+using TaskManagement.Hubs;
+using Volo.Abp.AspNetCore.SignalR;
 
 namespace TaskManagement;
 
@@ -18,7 +21,8 @@ namespace TaskManagement;
     typeof(AbpTenantManagementApplicationModule),
     typeof(AbpFeatureManagementApplicationModule),
     typeof(AbpSettingManagementApplicationModule),
-    typeof(AbpAutoMapperModule) 
+    typeof(AbpAutoMapperModule),
+    typeof(AbpAspNetCoreSignalRModule) 
     )]
 public class TaskManagementApplicationModule : AbpModule
 {
@@ -26,7 +30,6 @@ public class TaskManagementApplicationModule : AbpModule
     {
         Configure<AbpAutoMapperOptions>(options =>
         {
-            // Đăng ký Profile để ABP biết cách thực hiện ánh xạ
             options.AddMaps<TaskManagementApplicationModule>();
         });
     }
