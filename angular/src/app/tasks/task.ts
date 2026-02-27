@@ -79,7 +79,7 @@ export class TaskComponent implements OnInit {
   deletionReason: string = '';
   duplicateErrorMessage: boolean = false;
 
-  drawerWidth = 400; 
+  drawerWidth = 380; 
   isResizing = false;
 
   hasCreatePermission = false;

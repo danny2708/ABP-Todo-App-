@@ -263,3 +263,27 @@ body, .task-page-container {
 [class*="source"] {
   display: none !important;
 }
+
+/* ========== NEW CLASSES (moved from inline styles) ========== */
+
+/* Duplicate task alert (was inline styled) */
+.duplicate-alert {
+  border-left: 4px solid #f5222d;
+  background-color: #fff1f0;
+  color: #cf1322;
+}
+
+/* utility to replace inline style="flex: 1;" */
+.flex-1 {
+  flex: 1;
+}
+
+/* Keep consistent button size if needed (used with flex-1) */
+.rounded-pill.d-flex.justify-content-center.align-items-center.flex-1 {
+  min-height: 40px;
+}
+
+/* small helper for drawer footer spacing if needed */
+.dock-footer-buttons > button {
+  flex: 1;
+}
