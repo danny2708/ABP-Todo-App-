@@ -15,6 +15,7 @@ using Volo.Abp.TenantManagement;
 using Volo.Abp.TenantManagement.EntityFrameworkCore;
 using TaskManagement.Tasks;
 using TaskManagement.Projects; // Thêm namespace mới
+using TaskManagement.Notifications;
 
 namespace TaskManagement.EntityFrameworkCore;
 
@@ -47,6 +48,8 @@ public class TaskManagementDbContext :
         : base(options)
     {
     }
+
+    public DbSet<AppNotification> Notifications { get; set; }
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -125,6 +128,16 @@ public class TaskManagementDbContext :
             
             // THÊM: Cấu hình cột này không bắt buộc (Nullable) để fix lỗi INSERT
             b.Property(x => x.DeletionReason).IsRequired(false).HasMaxLength(500); 
+        });
+
+        //6 Thêm notification 
+        builder.Entity<AppNotification>(b =>
+        {
+            b.ToTable(TaskManagementConsts.DbTablePrefix + "Notifications", TaskManagementConsts.DbSchema);
+            b.ConfigureByConvention(); // Tự động config các trường cơ bản của ABP
+            b.Property(x => x.Title).IsRequired().HasMaxLength(256);
+            b.Property(x => x.Message).IsRequired().HasMaxLength(1000);
+            b.HasIndex(x => x.UserId); // Đánh index để truy vấn theo UserId cho nhanh
         });
     }
 }
