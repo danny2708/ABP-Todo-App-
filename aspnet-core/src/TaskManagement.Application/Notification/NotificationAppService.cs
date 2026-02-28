@@ -5,11 +5,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.Users; 
 
 namespace TaskManagement.Notifications
 {
     [Authorize]
-    public class NotificationAppService : ApplicationService
+    public class NotificationAppService : ApplicationService, INotificationAppService
     {
         private readonly IRepository<AppNotification, Guid> _notificationRepository;
 
@@ -18,24 +19,23 @@ namespace TaskManagement.Notifications
             _notificationRepository = notificationRepository;
         }
 
-        // Lấy top 20 thông báo mới nhất của user đang đăng nhập
-        public async Task<List<AppNotification>> GetMyNotificationsAsync()
+        public async Task<List<NotificationDto>> GetMyNotificationsAsync()
         {
-            var userId = CurrentUser.Id.Value;
-            var query = await _notificationRepository.GetQueryableAsync();
+            var userId = CurrentUser.GetId(); // Bây giờ sẽ không còn lỗi
+            var queryable = await _notificationRepository.GetQueryableAsync();
             
-            var notifications = query.Where(n => n.UserId == userId)
-                                     .OrderByDescending(n => n.CreationTime)
-                                     .Take(20)
-                                     .ToList();
-            return notifications;
+            var notifications = queryable.Where(n => n.UserId == userId)
+                                         .OrderByDescending(n => n.CreationTime)
+                                         .Take(20)
+                                         .ToList();
+
+            return ObjectMapper.Map<List<AppNotification>, List<NotificationDto>>(notifications);
         }
 
-        // Đánh dấu đã đọc
         public async Task MarkAsReadAsync(Guid id)
         {
             var notification = await _notificationRepository.GetAsync(id);
-            if (notification.UserId == CurrentUser.Id)
+            if (notification.UserId == CurrentUser.GetId())
             {
                 notification.IsRead = true;
                 await _notificationRepository.UpdateAsync(notification);

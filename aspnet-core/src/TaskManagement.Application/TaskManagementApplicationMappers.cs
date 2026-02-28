@@ -2,7 +2,7 @@ using AutoMapper;
 using TaskManagement.Tasks;
 using TaskManagement.Projects; 
 using Volo.Abp.AutoMapper;
-
+using TaskManagement.Notifications;
 namespace TaskManagement;
 
 public class TaskManagementApplicationAutoMapperProfile : Profile
@@ -28,5 +28,8 @@ public class TaskManagementApplicationAutoMapperProfile : Profile
         CreateMap<CreateUpdateProjectDto, Project>()
             .IgnoreFullAuditedObjectProperties()
             .ForMember(dest => dest.Members, opt => opt.Ignore()); // Bỏ qua danh sách Member để xử lý thủ công
+
+            /* --- 3. MAPPING CHO NOTIFICATION (THÔNG BÁO) --- */
+            CreateMap<AppNotification, NotificationDto>();
     }
 }
