@@ -1,59 +1,148 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NotificationService } from '../../services/notification.service';
+import { NotificationService, NotificationDto } from '../../services/notification.service';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzIconModule } from 'ng-zorro-antd/icon';
-import { NzListModule } from 'ng-zorro-antd/list';
+import { NzButtonModule } from 'ng-zorro-antd/button';
 import { CoreModule } from '@abp/ng.core';
 
 @Component({
   selector: 'app-notification-bell',
   standalone: true,
-  imports: [CommonModule, CoreModule, NzBadgeModule, NzDropDownModule, NzIconModule, NzListModule],
+  imports: [CommonModule, CoreModule, NzBadgeModule, NzDropDownModule, NzIconModule, NzButtonModule],
   template: `
-    <div class="bell-wrapper" nz-dropdown [nzDropdownMenu]="menu" nzTrigger="click" (click)="service.clearUnread()">
-      <nz-badge [nzCount]="service.unreadCount" [nzOffset]="[5, 0]">
+    <div class="bell-wrapper" nz-dropdown [nzDropdownMenu]="menu" nzTrigger="click" nzPlacement="bottomRight">
+      <nz-badge [nzCount]="service.unreadCount" [nzOffset]="[5, 5]">
         <i nz-icon nzType="bell" class="bell-icon"></i>
       </nz-badge>
     </div>
 
     <nz-dropdown-menu #menu="nzDropdownMenu">
-      <div class="notification-dropdown shadow-lg bg-white rounded border">
-        <div class="p-3 border-bottom d-flex justify-content-between align-items-center bg-light">
-          <span class="fw-bold">{{ 'TaskManagement::Notifications' | abpLocalization }}</span>
-          <span class="badge bg-primary rounded-pill">{{ service.notifications.length }}</span>
+      <div class="notification-dropdown shadow-lg rounded bg-white">
+        <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
+          <h6 class="mb-0 fw-bold">{{ 'TaskManagement::Notifications' | abpLocalization }}</h6>
+          <button *ngIf="service.unreadCount > 0" 
+                  nz-button nzType="link" nzSize="small" 
+                  class="p-0 text-primary d-flex align-items-center"
+                  (click)="service.markAllAsRead()">
+            <i nz-icon nzType="check" class="me-1"></i> Đánh dấu đã đọc
+          </button>
+        </div>
+
+        <div class="d-flex p-2 bg-light border-bottom gap-1">
+          <button class="filter-btn" [class.active]="filter === 'all'" (click)="setFilter('all')">Tất cả</button>
+          <button class="filter-btn" [class.active]="filter === 'unread'" (click)="setFilter('unread')">
+            Chưa đọc <span *ngIf="service.unreadCount > 0" class="badge bg-danger ms-1">{{ service.unreadCount }}</span>
+          </button>
+          <button class="filter-btn" [class.active]="filter === 'read'" (click)="setFilter('read')">Đã đọc</button>
         </div>
         
-        <nz-list [nzDataSource]="service.notifications" nzSize="small" class="notification-list">
-          <nz-list-item *ngFor="let item of service.notifications">
-            <div class="d-flex flex-column gap-1 w-100">
-              <div class="message-text small text-dark">{{ item.message }}</div>
-              <div class="time-text x-small text-muted">
+        <div class="notification-list">
+          <div *ngFor="let item of filteredNotifications" 
+               class="notification-item border-bottom d-flex align-items-start"
+               [ngClass]="{'unread-bg': !item.isRead}"
+               (click)="service.markAsRead(item.id)">
+            
+            <div class="icon-wrapper me-3" [style.color]="getIconColor(item.type)">
+              <i nz-icon [nzType]="getIconType(item.type)"></i>
+            </div>
+
+            <div class="flex-grow-1 min-w-0">
+              <div class="message-text small text-dark" [ngClass]="{'fw-bold': !item.isRead}">
+                {{ item.message }}
+              </div>
+              <div class="time-text x-small text-muted mt-1 d-flex align-items-center">
                 <i nz-icon nzType="clock-circle" class="me-1"></i>
                 {{ item.creationTime | date:'HH:mm dd/MM' }}
               </div>
             </div>
-          </nz-list-item>
+
+            <div *ngIf="!item.isRead" class="unread-dot ms-2 flex-shrink-0"></div>
+          </div>
           
-          <nz-list-empty *ngIf="service.notifications.length === 0" [nzNoResult]="noData"></nz-list-empty>
-          <ng-template #noData>
-             <div class="p-4 text-center text-muted small">{{ 'TaskManagement::NoNotifications' | abpLocalization }}</div>
-          </ng-template>
-        </nz-list>
+          <div *ngIf="filteredNotifications.length === 0" class="p-4 text-center text-muted">
+            <i nz-icon nzType="bell" class="fs-1 opacity-50 mb-2"></i>
+            <p class="small mb-0">
+              {{ filter === 'unread' ? 'Không có thông báo chưa đọc' : 
+                 filter === 'read' ? 'Không có thông báo đã đọc' : 'Bạn chưa có thông báo nào' }}
+            </p>
+          </div>
+        </div>
       </div>
     </nz-dropdown-menu>
   `,
   styles: [`
-    .bell-wrapper { cursor: pointer; padding: 0 12px; transition: opacity 0.3s; }
+    .bell-wrapper { cursor: pointer; padding: 0 15px; display: flex; align-items: center; height: 100%; transition: opacity 0.3s; }
     .bell-wrapper:hover { opacity: 0.7; }
-    .bell-icon { font-size: 20px; color: #595959; }
-    .notification-dropdown { width: 320px; max-height: 450px; overflow: hidden; }
-    .notification-list { max-height: 380px; overflow-y: auto; }
-    .message-text { line-height: 1.4; font-weight: 500; }
+    .bell-icon { font-size: 20px; color: #fff; }
+    
+    .notification-dropdown { width: 360px; overflow: hidden; border: 1px solid #f0f0f0; }
+    .notification-list { max-height: 400px; overflow-y: auto; }
+    .notification-list::-webkit-scrollbar { width: 5px; }
+    .notification-list::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 4px; }
+
+    /* Nút bộ lọc */
+    .filter-btn {
+      flex: 1; border: none; background: transparent; padding: 6px 12px;
+      font-size: 13px; font-weight: 500; border-radius: 6px; color: #595959;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .filter-btn:hover { background: #e6f7ff; color: #1890ff; }
+    .filter-btn.active { background: #1890ff; color: #fff; box-shadow: 0 2px 4px rgba(24,144,255,0.2); }
+
+    /* Item thông báo */
+    .notification-item {
+      padding: 14px 16px; transition: background-color 0.2s; cursor: pointer;
+    }
+    .notification-item:hover { background-color: #f5f5f5; }
+    
+    /* Giao diện CHƯA ĐỌC */
+    .unread-bg { background-color: #f0f8ff !important; } /* Nền xanh lam nhạt */
+    .unread-bg:hover { background-color: #e6f7ff !important; }
+    .unread-dot { width: 10px; height: 10px; background-color: #1890ff; border-radius: 50%; margin-top: 5px; }
+
+    .icon-wrapper {
+      width: 36px; height: 36px; border-radius: 50%; background: #f5f5f5;
+      display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+    }
+    .message-text { line-height: 1.4; word-wrap: break-word; }
     .x-small { font-size: 11px; }
   `]
 })
 export class NotificationBellComponent {
   public readonly service = inject(NotificationService);
+  public filter: 'all' | 'unread' | 'read' = 'all';
+
+  setFilter(f: 'all' | 'unread' | 'read') {
+    this.filter = f;
+  }
+
+  get filteredNotifications() {
+    return this.service.notifications.filter(n => {
+      if (this.filter === 'unread') return !n.isRead;
+      if (this.filter === 'read') return n.isRead;
+      return true;
+    });
+  }
+
+  getIconType(type: string): string {
+    switch(type) {
+      case 'TaskApproved': return 'check-circle';
+      case 'NewTaskProposed': return 'plus-circle';
+      case 'TaskRejected': return 'close-circle';
+      case 'TaskOverdue': return 'warning';
+      default: return 'info-circle';
+    }
+  }
+
+  getIconColor(type: string): string {
+    switch(type) {
+      case 'TaskApproved': return '#52c41a'; // Xanh lá
+      case 'NewTaskProposed': return '#1890ff'; // Xanh dương
+      case 'TaskRejected': return '#ff4d4f'; // Đỏ
+      case 'TaskOverdue': return '#faad14'; // Vàng
+      default: return '#1890ff';
+    }
+  }
 }
