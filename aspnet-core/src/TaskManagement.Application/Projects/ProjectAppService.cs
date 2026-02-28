@@ -14,6 +14,7 @@ using Volo.Abp.Identity;
 using System.Linq.Dynamic.Core;
 using Microsoft.EntityFrameworkCore; 
 using TaskManagement.Tasks;
+using IdentityUser = Volo.Abp.Identity.IdentityUser;
 
 namespace TaskManagement.Projects;
 

@@ -26,9 +26,9 @@ export interface CreateUpdateTaskDto {
   title?: string;
   description?: string | null;
   status?: TaskStatus;
-  dueDate?: string | null;
+  dueDate: string;
   weight?: number;
-  assignedUserIds?: string[];
+  assignedUserIds: string[];
 }
 
 export interface GetTasksInput extends PagedAndSortedResultRequestDto {

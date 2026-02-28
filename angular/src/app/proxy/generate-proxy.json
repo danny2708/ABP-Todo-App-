@@ -5046,15 +5046,15 @@
         {
           "name": "DueDate",
           "jsonName": null,
-          "type": "System.DateTime?",
-          "typeSimple": "string?",
-          "isRequired": false,
+          "type": "System.DateTime",
+          "typeSimple": "string",
+          "isRequired": true,
           "minLength": null,
           "maxLength": null,
           "minimum": null,
           "maximum": null,
           "regex": null,
-          "isNullable": true
+          "isNullable": false
         },
         {
           "name": "Weight",
@@ -5074,8 +5074,8 @@
           "jsonName": null,
           "type": "[System.Guid]",
           "typeSimple": "[string]",
-          "isRequired": false,
-          "minLength": null,
+          "isRequired": true,
+          "minLength": 1,
           "maxLength": null,
           "minimum": null,
           "maximum": null,

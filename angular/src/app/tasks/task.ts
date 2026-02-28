@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
@@ -28,6 +28,10 @@ import { TaskDto, TaskStatus, UserLookupDto } from '../proxy/tasks/models';
 import { ProjectService } from '../proxy/projects/project.service';
 import { Router, ActivatedRoute } from '@angular/router';
 
+// IMPORT NOTIFICATION SERVICE ĐỂ ĐỒNG BỘ REALTIME
+import { NotificationService } from '../shared/services/notification.service';
+import { Subscription } from 'rxjs';
+
 @Component({
   selector: 'app-task',
   standalone: true,
@@ -42,7 +46,7 @@ import { Router, ActivatedRoute } from '@angular/router';
     NzCheckboxModule, NzSliderModule
   ],
 })
-export class TaskComponent implements OnInit {
+export class TaskComponent implements OnInit, OnDestroy {
   public readonly list = inject(ListService);
   private taskService = inject(TaskService);
   private projectService = inject(ProjectService);
@@ -53,6 +57,10 @@ export class TaskComponent implements OnInit {
   private permissionService = inject(PermissionService);
   private configState = inject(ConfigStateService);
   private localizationService = inject(LocalizationService);
+  
+  // Inject NotificationService
+  private notificationService = inject(NotificationService);
+  private signalrSubscription: Subscription;
 
   weightMarks: any = { 1: '1', 5: '5', 10: '10' };
 
@@ -108,21 +116,38 @@ export class TaskComponent implements OnInit {
     this.hasApprovePermission = this.permissionService.getGrantedPolicy('TaskManagement.Tasks.Approve');
 
     this.buildForm();
-    this.setupAssignmentGuard(); // Đăng ký logic bảo vệ danh sách người thực hiện
+    this.setupAssignmentGuard();
     
     this.loadProjectInfo();
     this.loadUsers();
     this.loadTasks();
     this.loadOverdueTasks();
     this.loadPendingTasks();
+
+    // LOGIC ĐỒNG BỘ REALTIME: Lắng nghe tín hiệu làm mới dữ liệu từ SignalR
+    this.setupRealtimeSync();
   }
 
-  // LOGIC NGĂN CHẶN XÓA CHÍNH MÌNH
+  // Lắng nghe sự kiện để tự động load lại dữ liệu
+  private setupRealtimeSync(): void {
+    // Chúng ta lắng nghe mọi thông báo. Nếu có thông báo liên quan đến Task, ta refresh lại bảng.
+    // Lưu ý: Bạn cần đảm bảo NotificationService có cơ chế emit/Subject để báo hiệu ở đây.
+    // Ở mức đơn giản nhất, ta dùng hubConnection trực tiếp nếu NotificationService public nó.
+    this.notificationService.onNotificationReceived$.subscribe(notif => {
+      console.log('Realtime Update Triggered:', notif);
+      this.refreshData(); // Tự động cập nhật stats và list mà không cần F5
+    });
+  }
+
+  ngOnDestroy(): void {
+    if (this.signalrSubscription) {
+      this.signalrSubscription.unsubscribe();
+    }
+  }
+
   private setupAssignmentGuard(): void {
     this.form.get('assignedUserIds')?.valueChanges.subscribe((ids: string[]) => {
-      // Chỉ áp dụng logic này khi đang tạo mới HOẶC nếu người dùng là nhân viên bình thường
       if (this.currentUser?.id && ids && !ids.includes(this.currentUser.id)) {
-        // Tự động thêm lại ID của chính mình vào danh sách
         this.form.get('assignedUserIds')?.setValue([this.currentUser.id, ...ids], { emitEvent: false });
       }
     });
@@ -223,7 +248,6 @@ export class TaskComponent implements OnInit {
       weight: 1, 
       projectId: this.projectId, 
       isApproved: this.hasApprovePermission, 
-      // MẶC ĐỊNH CHỌN CHÍNH MÌNH KHI TẠO
       assignedUserIds: [this.currentUser.id] 
     });
     this.form.enable(); 
