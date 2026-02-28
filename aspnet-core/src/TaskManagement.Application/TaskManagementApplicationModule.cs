@@ -9,6 +9,10 @@ using Volo.Abp.TenantManagement;
 using Microsoft.AspNetCore.SignalR;
 using TaskManagement.Hubs;
 using Volo.Abp.AspNetCore.SignalR;
+// THÊM CÁC USING CẦN THIẾT CHO WORKER
+using Volo.Abp;
+using Volo.Abp.BackgroundWorkers;
+using TaskManagement.Workers;
 
 namespace TaskManagement;
 
@@ -32,5 +36,12 @@ public class TaskManagementApplicationModule : AbpModule
         {
             options.AddMaps<TaskManagementApplicationModule>();
         });
+    }
+
+    // ĐĂNG KÝ WORKER KHI KHỞI CHẠY ỨNG DỤNG
+    public override void OnApplicationInitialization(ApplicationInitializationContext context)
+    {
+        // Kích hoạt tiến trình quét task quá hạn tự động
+        context.AddBackgroundWorkerAsync<OverdueTaskWorker>();
     }
 }
