@@ -20,7 +20,7 @@ import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzModalModule } from 'ng-zorro-antd/modal';
 
 // Services
-import { CalendarService } from '../proxy/controllers/calendar.service'; // Check lại đường dẫn service
+import { CalendarService } from '../proxy/calendar/calendar.service'; 
 import { TaskDto, TaskStatus } from '../proxy/tasks/models';
 import { ProjectService } from '../proxy/projects/project.service';
 

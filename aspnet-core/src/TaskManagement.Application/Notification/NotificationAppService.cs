@@ -5,10 +5,13 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
-using Volo.Abp.Users; 
+using Volo.Abp.Users; // Cần thiết cho CurrentUser.GetId()
+using Volo.Abp;       // QUAN TRỌNG: Cần thiết cho [RemoteService]
 
 namespace TaskManagement.Notifications
 {
+    // Thêm Attribute này để ép ABP tạo API Controller
+    [RemoteService(Name = "Notification")] 
     [Authorize]
     public class NotificationAppService : ApplicationService, INotificationAppService
     {
@@ -21,7 +24,7 @@ namespace TaskManagement.Notifications
 
         public async Task<List<NotificationDto>> GetMyNotificationsAsync()
         {
-            var userId = CurrentUser.GetId(); // Bây giờ sẽ không còn lỗi
+            var userId = CurrentUser.GetId(); 
             var queryable = await _notificationRepository.GetQueryableAsync();
             
             var notifications = queryable.Where(n => n.UserId == userId)

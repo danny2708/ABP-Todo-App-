@@ -4,8 +4,6 @@ using System.IO;
 using System.Linq;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
-using Microsoft.AspNetCore.Extensions.DependencyInjection;
-using Microsoft.AspNetCore.Identity; // Thêm namespace này
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,6 +28,10 @@ using Volo.Abp.Security.Claims;
 using Volo.Abp.Swashbuckle;
 using Volo.Abp.UI.Navigation.Urls;
 using Volo.Abp.VirtualFileSystem;
+using Microsoft.AspNetCore.Identity;
+// THÊM NAMESPACE ĐỂ NHẬN DIỆN HUB
+using TaskManagement.Hubs;
+using Microsoft.AspNetCore.Extensions.DependencyInjection;
 
 namespace TaskManagement;
 
@@ -65,21 +67,19 @@ public class TaskManagementHttpApiHostModule : AbpModule
         var hostingEnvironment = context.Services.GetHostingEnvironment();
 
         ConfigureAuthentication(context);
-        ConfigureIdentity(context); // Gọi hàm cấu hình Identity mới tại đây
+        ConfigureIdentity(context);
         ConfigureBundles();
         ConfigureUrls(configuration);
-        ConfigureConventionalControllers();
+        ConfigureConventionalControllers(); // ĐÃ KÍCH HOẠT LẠI
         ConfigureVirtualFileSystem(context);
         ConfigureCors(context, configuration);
         ConfigureSwaggerServices(context, configuration);
     }
 
-    // Hàm cấu hình cho phép chung Email
     private void ConfigureIdentity(ServiceConfigurationContext context)
     {
         Configure<IdentityOptions>(options =>
         {
-            // Tắt ràng buộc Email duy nhất
             options.User.RequireUniqueEmail = false; 
         });
     }
@@ -145,10 +145,11 @@ public class TaskManagementHttpApiHostModule : AbpModule
 
     private void ConfigureConventionalControllers()
     {
-        // Configure<AbpAspNetCoreMvcOptions>(options =>
-        // {
-        //     options.ConventionalControllers.Create(typeof(TaskManagementApplicationModule).Assembly);
-        // });
+        // MỞ COMMENT: Đây là phần quan trọng nhất để NotificationAppService hiện lên Swagger
+        Configure<AbpAspNetCoreMvcOptions>(options =>
+        {
+            options.ConventionalControllers.Create(typeof(TaskManagementApplicationModule).Assembly);
+        });
     }
 
     private static void ConfigureSwaggerServices(ServiceConfigurationContext context, IConfiguration configuration)
@@ -182,7 +183,7 @@ public class TaskManagementHttpApiHostModule : AbpModule
                     .SetIsOriginAllowedToAllowWildcardSubdomains()
                     .AllowAnyHeader()
                     .AllowAnyMethod()
-                    .AllowCredentials();
+                    .AllowCredentials(); // Bắt buộc cho SignalR
             });
         });
     }
@@ -207,7 +208,7 @@ public class TaskManagementHttpApiHostModule : AbpModule
         app.UseCorrelationId();
         app.MapAbpStaticAssets();
         app.UseRouting();
-        app.UseCors();
+        app.UseCors(); 
         app.UseAuthentication();
         app.UseAbpOpenIddictValidation();
 
@@ -215,6 +216,7 @@ public class TaskManagementHttpApiHostModule : AbpModule
         {
             app.UseMultiTenancy();
         }
+
         app.UseUnitOfWork();
         app.UseDynamicClaims();
         app.UseAuthorization();
@@ -223,7 +225,6 @@ public class TaskManagementHttpApiHostModule : AbpModule
         app.UseAbpSwaggerUI(c =>
         {
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "TaskManagement API");
-
             var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
             c.OAuthClientId(configuration["AuthServer:SwaggerClientId"]);
             c.OAuthScopes("TaskManagement");
@@ -231,6 +232,7 @@ public class TaskManagementHttpApiHostModule : AbpModule
 
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();
+
         app.UseConfiguredEndpoints();
     }
 }

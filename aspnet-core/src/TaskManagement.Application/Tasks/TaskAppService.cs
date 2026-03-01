@@ -5,6 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using TaskManagement.Permissions;
 using TaskManagement.Projects;
+// BẮT BUỘC: Thêm namespace Notifications
+using TaskManagement.Notifications; 
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
@@ -12,7 +14,6 @@ using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Identity;
 using System.Linq.Dynamic.Core;
 using Microsoft.EntityFrameworkCore;
-// THÊM CÁC NAMESPACE MỚI CHO SIGNALR
 using Microsoft.AspNetCore.SignalR;
 using TaskManagement.Hubs; 
 
@@ -24,19 +25,22 @@ namespace TaskManagement.Tasks
         private readonly ITaskRepository _taskRepository;
         private readonly IRepository<IdentityUser, Guid> _userRepository;
         private readonly IRepository<Project, Guid> _projectRepository;
-        // KHAI BÁO HUB CONTEXT
         private readonly IHubContext<NotificationHub> _hubContext;
+        
+        private readonly IRepository<AppNotification, Guid> _notificationRepository;
 
         public TaskAppService(
             ITaskRepository repository,
             IRepository<IdentityUser, Guid> userRepository,
             IRepository<Project, Guid> projectRepository,
-            IHubContext<NotificationHub> hubContext) // INJECT HUB
+            IHubContext<NotificationHub> hubContext,
+            IRepository<AppNotification, Guid> notificationRepository) 
         {
             _taskRepository = repository;
             _userRepository = userRepository;
             _projectRepository = projectRepository;
             _hubContext = hubContext;
+            _notificationRepository = notificationRepository; 
         }
 
         public async Task<TaskDto> GetAsync(Guid id)
@@ -44,10 +48,10 @@ namespace TaskManagement.Tasks
             var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
             var task = await queryable.FirstOrDefaultAsync(t => t.Id == id);
             
-            if (task == null) throw new UserFriendlyException(L["TaskManagement::TaskNotFound"]);
+            if (task == null) throw new UserFriendlyException(L["TaskManagement::Task Not Found"]);
 
             var canView = await CanViewTask(task);
-            if (!canView) throw new UserFriendlyException(L["TaskManagement::NoPermission"]);
+            if (!canView) throw new UserFriendlyException(L["TaskManagement::No Permission"]);
 
             var dto = ObjectMapper.Map<AppTask, TaskDto>(task);
             
@@ -155,27 +159,32 @@ namespace TaskManagement.Tasks
             await _taskRepository.InsertAsync(task);
             var resultDto = ObjectMapper.Map<AppTask, TaskDto>(task);
 
-            // REALTIME: Gửi thông báo dựa trên trạng thái phê duyệt
             if (!task.IsApproved)
             {
                 // Nếu là đề xuất, gửi cho PM (Project Manager) của dự án đó
                 var project = await _projectRepository.GetAsync(task.ProjectId);
-                await _hubContext.Clients.User(project.ProjectManagerId.ToString()).SendAsync("ReceiveNotification", new {
-                    Type = "NewTaskProposed",
-                    Message = $"{CurrentUser.UserName} vừa đề xuất công việc: {task.Title}",
-                    TaskId = task.Id
-                });
+                var notif = new AppNotification(GuidGenerator.Create(), project.ProjectManagerId, "Đề xuất mới", $"{CurrentUser.UserName} vừa đề xuất công việc: {task.Title}", "NewTaskProposed", task.Id);
+                
+                // Lưu vào Database
+                await _notificationRepository.InsertAsync(notif);
+
+                // Chuyển sang DTO và Bắn SignalR
+                var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(notif);
+                await _hubContext.Clients.User(project.ProjectManagerId.ToString()).SendAsync("ReceiveNotification", notifDto);
             }
             else
             {
-                // Nếu PM tạo task đã duyệt, gửi cho tất cả những người được gán
+                // Nếu PM tạo task đã duyệt, gửi cho tất cả những người được gán (trừ bản thân PM)
                 foreach (var userId in finalAssignedIds.Where(id => id != CurrentUser.Id))
                 {
-                    await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", new {
-                        Type = "TaskAssigned",
-                        Message = $"Bạn được gán công việc mới: {task.Title}",
-                        TaskId = task.Id
-                    });
+                    var notif = new AppNotification(GuidGenerator.Create(), userId, "Công việc mới", $"Bạn được gán công việc: {task.Title}", "TaskAssigned", task.Id);
+                    
+                    // Lưu vào Database
+                    await _notificationRepository.InsertAsync(notif);
+
+                    // Chuyển sang DTO và Bắn SignalR
+                    var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(notif);
+                    await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", notifDto);
                 }
             }
 
@@ -191,14 +200,16 @@ namespace TaskManagement.Tasks
             task.IsRejected = false;
             await _taskRepository.UpdateAsync(task);
 
-            // REALTIME: Thông báo cho người đề xuất rằng task đã được duyệt
             if (task.CreatorId.HasValue)
             {
-                await _hubContext.Clients.User(task.CreatorId.Value.ToString()).SendAsync("ReceiveNotification", new {
-                    Type = "TaskApproved",
-                    Message = $"Công việc '{task.Title}' của bạn đã được phê duyệt.",
-                    TaskId = task.Id
-                });
+                var notif = new AppNotification(GuidGenerator.Create(), task.CreatorId.Value, "Đã phê duyệt", $"Công việc '{task.Title}' của bạn đã được phê duyệt.", "TaskApproved", task.Id);
+                
+                // Lưu vào Database
+                await _notificationRepository.InsertAsync(notif);
+
+                // Chuyển sang DTO và Bắn SignalR
+                var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(notif);
+                await _hubContext.Clients.User(task.CreatorId.Value.ToString()).SendAsync("ReceiveNotification", notifDto);
             }
 
             return ObjectMapper.Map<AppTask, TaskDto>(task);
@@ -212,14 +223,16 @@ namespace TaskManagement.Tasks
             task.IsRejected = true;
             await _taskRepository.UpdateAsync(task);
 
-            // REALTIME: Thông báo cho người đề xuất rằng task đã bị từ chối
             if (task.CreatorId.HasValue)
             {
-                await _hubContext.Clients.User(task.CreatorId.Value.ToString()).SendAsync("ReceiveNotification", new {
-                    Type = "TaskRejected",
-                    Message = $"Yêu cầu công việc '{task.Title}' đã bị từ chối.",
-                    TaskId = task.Id
-                });
+                var notif = new AppNotification(GuidGenerator.Create(), task.CreatorId.Value, "Bị từ chối", $"Yêu cầu công việc '{task.Title}' đã bị từ chối.", "TaskRejected", task.Id);
+                
+                // Lưu vào Database
+                await _notificationRepository.InsertAsync(notif);
+
+                // Chuyển sang DTO và Bắn SignalR
+                var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(notif);
+                await _hubContext.Clients.User(task.CreatorId.Value.ToString()).SendAsync("ReceiveNotification", notifDto);
             }
         }
 

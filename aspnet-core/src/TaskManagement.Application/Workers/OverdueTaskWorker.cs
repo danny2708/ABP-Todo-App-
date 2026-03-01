@@ -10,6 +10,7 @@ using Volo.Abp.BackgroundWorkers;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.ObjectMapping;
 using Volo.Abp.Threading;
+using Volo.Abp.Uow; // THÊM NAMESPACE NÀY
 
 namespace TaskManagement.Workers
 {
@@ -20,28 +21,29 @@ namespace TaskManagement.Workers
             IServiceScopeFactory serviceScopeFactory
         ) : base(timer, serviceScopeFactory)
         {
-            // Thiết lập chu kỳ quét: 600,000ms = 10 phút
-            Timer.Period = 600000; 
+            Timer.Period = 1000; // 10 phút quét 1 lần
         }
 
+        // THÊM ATTRIBUTE NÀY ĐỂ GIỮ KẾT NỐI DATABASE LUÔN MỞ
+        [UnitOfWork]
         protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
         {
-            // Giải phóng Service từ Scope để tránh lỗi tràn bộ nhớ (Memory Leak)
             var taskRepository = workerContext.ServiceProvider.GetRequiredService<ITaskRepository>();
             var notificationRepository = workerContext.ServiceProvider.GetRequiredService<IRepository<AppNotification, Guid>>();
             var hubContext = workerContext.ServiceProvider.GetRequiredService<IHubContext<NotificationHub>>();
             var objectMapper = workerContext.ServiceProvider.GetRequiredService<IObjectMapper>();
 
-            // 1. Tìm các Task đã quá hạn (DueDate < Now) và chưa hoàn thành
+            // 1. Tìm các Task đã quá hạn và chưa hoàn thành
+            // Sử dụng đường dẫn tuyệt đối cho TaskStatus để tránh xung đột namespace
             var overdueTasks = await taskRepository.GetListAsync(t => 
                 t.DueDate < DateTime.Now && 
-                t.Status != TaskStatus.Completed &&
+                t.Status != TaskManagement.Tasks.TaskStatus.Completed && 
                 t.IsApproved == true
             );
 
             foreach (var task in overdueTasks)
             {
-                // 2. Kiểm tra xem đã gửi thông báo quá hạn cho Task này chưa để tránh spam
+                // 2. Kiểm tra tránh gửi trùng thông báo
                 var alreadyNotified = await notificationRepository.AnyAsync(n => 
                     n.RelatedTaskId == task.Id && 
                     n.Type == "TaskOverdue"
@@ -49,25 +51,23 @@ namespace TaskManagement.Workers
 
                 if (!alreadyNotified)
                 {
-                    // 3. Gửi thông báo cho tất cả nhân viên được gán vào Task này
+                    // 3. Gửi thông báo cho từng nhân viên được gán
                     foreach (var assignment in task.Assignments)
                     {
                         var notification = new AppNotification(
                             Guid.NewGuid(),
                             assignment.UserId,
                             "Cảnh báo quá hạn",
-                            $"Công việc '{task.Title}' đã quá hạn hoàn thành. Vui lòng cập nhật tiến độ!",
+                            $"Công việc '{task.Title}' đã trôi qua hạn chót!",
                             "TaskOverdue",
                             task.Id
                         );
 
-                        // Lưu vào Database để đảm bảo F5 không mất
                         await notificationRepository.InsertAsync(notification);
 
-                        // Chuyển đổi sang DTO để gửi qua SignalR
                         var notificationDto = objectMapper.Map<AppNotification, NotificationDto>(notification);
 
-                        // Bắn SignalR realtime
+                        // Gửi realtime qua SignalR
                         await hubContext.Clients.User(assignment.UserId.ToString())
                             .SendAsync("ReceiveNotification", notificationDto);
                     }

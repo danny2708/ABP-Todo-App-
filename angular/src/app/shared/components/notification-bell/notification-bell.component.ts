@@ -1,6 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { NotificationService, NotificationDto } from '../../services/notification.service';
+import { NotificationService } from '../../services/notification.service';
+import { NotificationDto } from '../../../proxy/notifications/models';
 import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzIconModule } from 'ng-zorro-antd/icon';
