@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NotificationService } from '../../services/notification.service';
 import { NotificationDto } from '../../../proxy/notifications/models';
@@ -31,7 +31,7 @@ import { CoreModule } from '@abp/ng.core';
           </button>
         </div>
 
-        <div class="d-flex p-2 bg-light border-bottom gap-1">
+        <div class="d-flex p-2 border-bottom gap-1">
           <button class="filter-btn" [class.active]="filter === 'all'" (click)="setFilter('all')">Tất cả</button>
           <button class="filter-btn" [class.active]="filter === 'unread'" (click)="setFilter('unread')">
             Chưa đọc <span *ngIf="service.unreadCount > 0" class="badge bg-danger ms-1">{{ service.unreadCount }}</span>
@@ -99,21 +99,32 @@ import { CoreModule } from '@abp/ng.core';
     .notification-item:hover { background-color: #f5f5f5; }
     
     /* Giao diện CHƯA ĐỌC */
-    .unread-bg { background-color: #f0f8ff !important; } /* Nền xanh lam nhạt */
+    .unread-bg { background-color: #f0f8ff !important; }
     .unread-bg:hover { background-color: #e6f7ff !important; }
     .unread-dot { width: 10px; height: 10px; background-color: #1890ff; border-radius: 50%; margin-top: 5px; }
 
     .icon-wrapper {
-      width: 36px; height: 36px; border-radius: 50%; background: #f5f5f5;
+      width: 36px; height: 36px; border-radius: 50%; background: #fff; border: 1px solid #f0f0f0;
       display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
     }
     .message-text { line-height: 1.4; word-wrap: break-word; }
     .x-small { font-size: 11px; }
   `]
 })
-export class NotificationBellComponent {
+export class NotificationBellComponent implements OnInit {
   public readonly service = inject(NotificationService);
+  private readonly cdr = inject(ChangeDetectorRef);
   public filter: 'all' | 'unread' | 'read' = 'all';
+
+  ngOnInit(): void {
+    // Đảm bảo kết nối SignalR được khởi động
+    this.service.startConnection();
+
+    // Lắng nghe tín hiệu để ép giao diện cập nhật ngay lập tức
+    this.service.onNotificationReceived$.subscribe(() => {
+      this.cdr.detectChanges(); // Ép nhảy số quả chuông ngay khi nhận tin
+    });
+  }
 
   setFilter(f: 'all' | 'unread' | 'read') {
     this.filter = f;
@@ -139,10 +150,10 @@ export class NotificationBellComponent {
 
   getIconColor(type: string): string {
     switch(type) {
-      case 'TaskApproved': return '#52c41a'; // Xanh lá
-      case 'NewTaskProposed': return '#1890ff'; // Xanh dương
-      case 'TaskRejected': return '#ff4d4f'; // Đỏ
-      case 'TaskOverdue': return '#faad14'; // Vàng
+      case 'TaskApproved': return '#52c41a'; 
+      case 'NewTaskProposed': return '#1890ff'; 
+      case 'TaskRejected': return '#ff4d4f'; 
+      case 'TaskOverdue': return '#faad14'; 
       default: return '#1890ff';
     }
   }
