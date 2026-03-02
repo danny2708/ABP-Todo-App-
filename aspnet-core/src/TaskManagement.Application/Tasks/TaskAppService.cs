@@ -234,6 +234,7 @@ namespace TaskManagement.Tasks
                 await _hubContext.Clients.User(task.CreatorId.Value.ToString()).SendAsync("ReceiveNotification", notifDto);
             }
 
+            await SendSilentSyncSignalAsync(task.ProjectId);
             return ObjectMapper.Map<AppTask, TaskDto>(task);
         }
 
@@ -254,6 +255,7 @@ namespace TaskManagement.Tasks
 
                 // Chuyển sang DTO và Bắn SignalR
                 var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(notif);
+                await SendSilentSyncSignalAsync(task.ProjectId);
                 await _hubContext.Clients.User(task.CreatorId.Value.ToString()).SendAsync("ReceiveNotification", notifDto);
             }
         }
@@ -312,6 +314,7 @@ namespace TaskManagement.Tasks
             }
 
             await _taskRepository.UpdateAsync(task);
+            await SendSilentSyncSignalAsync(task.ProjectId);
             return ObjectMapper.Map<AppTask, TaskDto>(task);
         }
 
@@ -334,6 +337,7 @@ namespace TaskManagement.Tasks
 
             task.DeletionReason = reason;
             await _taskRepository.DeleteAsync(id);
+            await SendSilentSyncSignalAsync(task.ProjectId);
         }
 
         public async Task<PagedResultDto<TaskDto>> GetOverdueListAsync(Guid projectId)
@@ -395,6 +399,32 @@ namespace TaskManagement.Tasks
         {
             if (await IsBossOfProject(task.ProjectId)) return true;
             return task.Assignments.Any(a => a.UserId == CurrentUser.Id) || task.CreatorId == CurrentUser.Id;
+        }
+
+        // Hàm hỗ trợ bắn tín hiệu ngầm (Không lưu Database)
+        private async Task SendSilentSyncSignalAsync(Guid projectId)
+        {
+            // Lấy danh sách thành viên dự án
+            var queryable = await _projectRepository.WithDetailsAsync(p => p.Members);
+            var project = await queryable.FirstOrDefaultAsync(p => p.Id == projectId);
+            if (project == null) return;
+
+            var notifyUserIds = project.Members.Select(m => m.UserId).ToList();
+            notifyUserIds.Add(project.ProjectManagerId);
+            
+            // Loại bỏ người đang thao tác để tránh họ bị tải lại trang 2 lần liên tục
+            var currentUserId = CurrentUser.Id;
+            notifyUserIds = notifyUserIds.Where(id => id != currentUserId).Distinct().ToList();
+
+            // Tạo một thông báo "ảo" mang cờ SilentTaskSync
+            var silentNotif = new AppNotification(GuidGenerator.Create(), Guid.Empty, "Sync", "Sync", "SilentTaskSync", null);
+            var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(silentNotif);
+
+            // Bắn qua SignalR cho các thành viên khác
+            foreach (var userId in notifyUserIds)
+            {
+                await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", notifDto);
+            }
         }
     }
 }

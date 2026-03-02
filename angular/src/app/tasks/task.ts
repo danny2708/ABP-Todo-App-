@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { NzDrawerModule } from 'ng-zorro-antd/drawer';
@@ -28,7 +28,6 @@ import { TaskDto, TaskStatus, UserLookupDto } from '../proxy/tasks/models';
 import { ProjectService } from '../proxy/projects/project.service';
 import { Router, ActivatedRoute } from '@angular/router';
 
-// IMPORT NOTIFICATION SERVICE ĐỂ ĐỒNG BỘ REALTIME
 import { NotificationService } from '../shared/services/notification.service';
 import { Subscription } from 'rxjs';
 
@@ -57,6 +56,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   private permissionService = inject(PermissionService);
   private configState = inject(ConfigStateService);
   private localizationService = inject(LocalizationService);
+  private cdr = inject(ChangeDetectorRef); // Ép cập nhật UI ngay lập tức
   
   // Inject NotificationService
   private notificationService = inject(NotificationService);
@@ -116,22 +116,22 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.hasApprovePermission = this.permissionService.getGrantedPolicy('TaskManagement.Tasks.Approve');
 
     this.buildForm();
-    this.setupAssignmentGuard(); // Kích hoạt bộ canh gác phân công
+    this.setupAssignmentGuard();
     
     this.loadProjectInfo();
     this.loadUsers();
     this.loadTasks();
     this.loadOverdueTasks();
     this.loadPendingTasks();
-
-    // LOGIC ĐỒNG BỘ REALTIME
     this.setupRealtimeSync();
   }
 
   private setupRealtimeSync(): void {
     this.signalrSubscription = this.notificationService.onNotificationReceived$.subscribe(notif => {
-      console.log('Realtime Update Triggered:', notif);
+      console.log('SignalR Signal Received:', notif.type);
+      
       this.refreshData(); 
+      this.cdr.detectChanges(); 
     });
   }
 
@@ -141,22 +141,24 @@ export class TaskComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Logic CHỐNG ĐÙN ĐẨY: 
-   * Nếu là nhân viên thường, không được phép gỡ tên mình khỏi danh sách thực hiện.
-   */
   private setupAssignmentGuard(): void {
     this.form.get('assignedUserIds')?.valueChanges.subscribe((ids: string[]) => {
       const currentUserId = this.currentUser?.id;
 
-      // Chỉ áp dụng ràng buộc nếu user KHÔNG có quyền Duyệt (không phải Admin/PM)
       if (!this.hasApprovePermission && currentUserId) {
-        if (!ids || !ids.includes(currentUserId)) {
-          // Nếu lỡ tay xóa tên mình, tự động thêm lại ngay lập tức
+        // Chuẩn hóa ID để so sánh chính xác
+        const selectedIds = (ids || []).map(id => id.toLowerCase());
+        const userIdLower = currentUserId.toLowerCase();
+
+        if (!selectedIds.includes(userIdLower)) {
+          // Tự động gán lại ID nhân viên vào danh sách
           const updatedIds = ids ? [currentUserId, ...ids] : [currentUserId];
           this.form.get('assignedUserIds')?.setValue(updatedIds, { emitEvent: false });
           
-          this.message.warning('Bạn phải tham gia thực hiện công việc do chính mình tạo ra!');
+          // CHỈ HIỆN TOAST KHI USER TỰ TAY THAY ĐỔI (Dirty)
+          if (this.form.get('assignedUserIds')?.dirty) {
+            this.message.warning('Bạn phải tham gia thực hiện công việc do chính mình tạo ra!');
+          }
         }
       }
     });
@@ -198,6 +200,7 @@ export class TaskComponent implements OnInit, OnDestroy {
         this.projectProgress = res.progress > 0 && res.progress <= 1 
             ? Math.round(res.progress * 100) 
             : Math.round(res.progress || 0);
+        this.cdr.detectChanges(); 
     });
   }
 
@@ -226,6 +229,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.list.hookToQuery(streamCreator).subscribe(res => {
       this.taskData = res;
       this.loading = false;
+      this.cdr.detectChanges();
     });
   }
 
@@ -301,7 +305,11 @@ export class TaskComponent implements OnInit, OnDestroy {
 
   loadPendingTasks(): void {
     this.taskService.getList({ projectId: this.projectId, isApproved: false, maxResultCount: 100 })
-      .subscribe(res => { this.pendingTasks = res.items; this.pendingCount = res.totalCount; });
+      .subscribe(res => { 
+        this.pendingTasks = res.items; 
+        this.pendingCount = res.totalCount;
+        this.cdr.detectChanges(); // Cập nhật ngay con số công việc chờ duyệt
+      });
   }
 
   onSearch(): void { this.list.page = 0; this.list.get(); }

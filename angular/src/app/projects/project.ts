@@ -22,7 +22,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { ProjectService } from '../proxy/projects/project.service';
 import { ProjectDto } from '../proxy/projects/models';
 import { TaskService } from '../proxy/tasks/task.service';
-import { NotificationService } from '../shared/services/notification.service'; // Tích hợp Real-time
+import { NotificationService } from '../shared/services/notification.service'; 
 
 @Component({
   selector: 'app-project',
@@ -74,7 +74,7 @@ export class ProjectComponent implements OnInit, OnDestroy {
     this.loadProjectManagers(); 
     this.loadProjects();
     this.subscribeToPmChanges();
-    this.setupRealtimeSync(); // Đăng ký lắng nghe SignalR
+    this.setupRealtimeSync(); // Khởi chạy lắng nghe Real-time
   }
 
   ngOnDestroy(): void {
@@ -83,8 +83,15 @@ export class ProjectComponent implements OnInit, OnDestroy {
   }
 
   private setupRealtimeSync(): void {
-    this.signalrSubscription = this.notificationService.onNotificationReceived$.subscribe(() => {
-      this.list.get();
+    this.signalrSubscription = this.notificationService.onNotificationReceived$.subscribe(notif => {
+      // 1. Kiểm tra các loại thông báo liên quan đến cấu trúc dự án
+      if (notif.type === 'ProjectAssigned' || notif.type === 'ProjectRemoved') {
+        // Hiển thị thông báo ngay lập tức trên UI
+        this.message.info(notif.message, { nzDuration: 5000 });
+      }
+
+      // 2. Refresh lại danh sách dự án
+      this.list.get(); 
       this.cdr.detectChanges();
     });
   }
@@ -190,7 +197,7 @@ export class ProjectComponent implements OnInit, OnDestroy {
         this.message.success(this.l('::SaveSuccess'));
         this.isModalOpen = false;
         this.saving = false;
-        this.list.get(); // Refresh danh sách sau khi lưu
+        this.list.get(); 
       },
       error: (err) => {
         this.saving = false;

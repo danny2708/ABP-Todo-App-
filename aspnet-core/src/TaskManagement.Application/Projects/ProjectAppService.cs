@@ -4,6 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR; 
+using TaskManagement.Hubs; 
+using TaskManagement.Notifications; 
 using TaskManagement.Permissions;
 using Volo.Abp;
 using Volo.Abp.Application.Dtos;
@@ -24,17 +27,25 @@ public class ProjectAppService : ApplicationService, IProjectAppService
     private readonly IRepository<Tasks.AppTask, Guid> _taskRepository;
     private readonly IRepository<IdentityUser, Guid> _userRepository;
     private readonly IdentityUserManager _userManager;
+    
+    // TIÊM DỊCH VỤ SIGNALR VÀ NOTIFICATION
+    private readonly IHubContext<NotificationHub> _hubContext;
+    private readonly IRepository<AppNotification, Guid> _notificationRepository;
 
     public ProjectAppService(
         IRepository<Project, Guid> projectRepository,
         IRepository<Tasks.AppTask, Guid> taskRepository,
         IRepository<IdentityUser, Guid> userRepository,
-        IdentityUserManager userManager)
+        IdentityUserManager userManager,
+        IHubContext<NotificationHub> hubContext,
+        IRepository<AppNotification, Guid> notificationRepository)
     {
         _projectRepository = projectRepository;
         _taskRepository = taskRepository;
         _userRepository = userRepository;
         _userManager = userManager;
+        _hubContext = hubContext;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<ProjectDto> GetAsync(Guid id)
@@ -137,6 +148,16 @@ public class ProjectAppService : ApplicationService, IProjectAppService
             project.Members.Add(new ProjectMember { ProjectId = project.Id, UserId = userId });
         }
         await _projectRepository.InsertAsync(project, autoSave: true);
+
+        foreach (var userId in input.MemberIds.Where(id => id != CurrentUser.Id))
+        {
+            var notif = new AppNotification(GuidGenerator.Create(), userId, "Dự án mới", $"Bạn được thêm vào dự án: {project.Name}", "ProjectAssigned", project.Id);
+            await _notificationRepository.InsertAsync(notif);
+            
+            var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(notif);
+            await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", notifDto);
+        }
+
         return ObjectMapper.Map<Project, ProjectDto>(project);
     }
 
@@ -151,26 +172,39 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         if (!isAdmin && project.ProjectManagerId != CurrentUser.Id)
             throw new UserFriendlyException(L["TaskManagement::NoPermissionToEditProject"]);
 
-        // Lấy danh sách ID thành viên cũ trước khi cập nhật
         var oldMemberIds = project.Members.Select(m => m.UserId).ToList();
 
         project.Name = input.Name;
         project.Description = input.Description;
         project.ProjectManagerId = input.ProjectManagerId;
 
-        // Cập nhật danh sách thành viên mới
         project.Members.Clear();
         foreach (var userId in input.MemberIds)
         {
             project.Members.Add(new ProjectMember { ProjectId = project.Id, UserId = userId });
         }
 
-        // Xử lý xóa nhân viên khỏi các Task nếu họ bị gỡ khỏi dự án
+        var addedMemberIds = input.MemberIds.Except(oldMemberIds).ToList();
         var removedMemberIds = oldMemberIds.Except(input.MemberIds).ToList();
-        
+
+        // Gửi thông báo cho người mới
+        foreach (var userId in addedMemberIds)
+        {
+            var notif = new AppNotification(GuidGenerator.Create(), userId, "Dự án mới", $"Bạn vừa được thêm vào dự án: {project.Name}", "ProjectAssigned", project.Id);
+            await _notificationRepository.InsertAsync(notif);
+            await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", ObjectMapper.Map<AppNotification, NotificationDto>(notif));
+        }
+
+        // Gửi thông báo cho người bị xóa
+        foreach (var userId in removedMemberIds)
+        {
+            var notif = new AppNotification(GuidGenerator.Create(), userId, "Rời dự án", $"Bạn không còn trong dự án: {project.Name}", "ProjectRemoved", project.Id);
+            await _notificationRepository.InsertAsync(notif);
+            await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", ObjectMapper.Map<AppNotification, NotificationDto>(notif));
+        }
+
         if (removedMemberIds.Any())
         {
-            // Lấy tất cả Task của dự án này kèm theo Assignments
             var tasks = await _taskRepository.WithDetailsAsync(t => t.Assignments);
             var projectTasks = await AsyncExecuter.ToListAsync(tasks.Where(t => t.ProjectId == id));
 
@@ -186,10 +220,7 @@ public class ProjectAppService : ApplicationService, IProjectAppService
                     }
                 }
 
-                if (isTaskUpdated)
-                {
-                    await _taskRepository.UpdateAsync(task);
-                }
+                if (isTaskUpdated) await _taskRepository.UpdateAsync(task);
             }
         }
 

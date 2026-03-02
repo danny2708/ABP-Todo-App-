@@ -42,21 +42,29 @@ export class NotificationService {
       .catch(err => console.error('SignalR Error: ', err));
 
     this.hubConnection.on('ReceiveNotification', (data: NotificationDto) => {
-      // Đưa vào zone.run để Angular cập nhật UI ngay lập tức
       this.zone.run(() => {
+        // 1. LOGIC ĐỒNG BỘ NGẦM (SILENT SYNC)
+        // Nếu type là 'SilentTaskSync', ta chỉ phát tín hiệu để các Component load lại data
+        if (data.type === 'SilentTaskSync') {
+          console.log('Đã nhận tín hiệu đồng bộ ngầm (Silent Sync) từ server');
+          this.onNotificationReceived$.next(data); 
+          return; // Kết thúc hàm, không hiện Toast và không thêm vào danh sách quả chuông
+        }
+
+        // 2. LOGIC THÔNG BÁO BÌNH THƯỜNG
         const newNotif: NotificationDto = {
           ...data,
-          // Ép kiểu Date về string ISO để khớp với định dạng NotificationDto
+          // Đảm bảo định dạng string ISO cho creationTime để khớp DTO
           creationTime: data.creationTime ? data.creationTime : new Date().toISOString()
         };
         
-        // Cập nhật mảng notifications bằng cách tạo mảng mới (Immutability)
+        // Cập nhật mảng để nảy số quả chuông
         this.notifications = [newNotif, ...this.notifications]; 
         
-        // Hiển thị thông báo nhanh trên màn hình
+        // Hiển thị thông báo Toast cho người dùng
         this.nzMessage.info(newNotif.message || 'Bạn có thông báo mới', { nzDuration: 5000 });
         
-        // Phát tín hiệu cho các component khác đang subcribe Subject này
+        // Phát tín hiệu cho các component (như task.ts hoặc project.ts) refresh giao diện
         this.onNotificationReceived$.next(newNotif);
       });
     });
@@ -80,13 +88,9 @@ export class NotificationService {
   }
 
   markAllAsRead() {
-    // Lọc danh sách chưa đọc
     const unreadIds = this.notifications.filter(n => !n.isRead).map(n => n.id);
-    
-    // Cập nhật UI nhanh
     this.notifications.forEach(n => n.isRead = true);
 
-    // Gọi API cập nhật cho từng thông báo (Hoặc nếu Backend có hàm MarkAllAsRead thì dùng hàm đó sẽ tốt hơn)
     unreadIds.forEach(id => {
       if (id) this.proxyService.markAsRead(id).subscribe();
     });
