@@ -15,7 +15,8 @@ using Volo.Abp.Identity;
 using System.Linq.Dynamic.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.SignalR;
-using TaskManagement.Hubs; 
+using TaskManagement.Hubs;
+using Volo.Abp.Users;
 
 namespace TaskManagement.Tasks
 {
@@ -105,6 +106,7 @@ namespace TaskManagement.Tasks
 
         public async Task<TaskDto> CreateAsync(CreateUpdateTaskDto input)
         {
+            // 1. Kiểm tra trùng lặp để tránh tạo cùng một task nhiều lần
             var isDuplicate = await _taskRepository.AnyAsync(t => 
                 t.ProjectId == input.ProjectId && 
                 t.Title.ToLower() == input.Title.ToLower() &&
@@ -118,9 +120,11 @@ namespace TaskManagement.Tasks
                 throw new UserFriendlyException(L["TaskManagement::Task Already Exists With Same Details"]);
             }
 
+            // 2. Xác định quyền hạn của người dùng hiện tại
             var isBoss = await IsBossOfProject(input.ProjectId);
             var hasApprovePermission = await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Tasks.Approve);
             
+            // Nếu là nhân viên thường, kiểm tra xem họ có phải thành viên dự án không
             if (!isBoss)
             {
                 var projectMembers = await _projectRepository.WithDetailsAsync(p => p.Members);
@@ -128,6 +132,7 @@ namespace TaskManagement.Tasks
                 if (!isMember) throw new UserFriendlyException(L["TaskManagement::No Permission To Create Task"]);
             }
 
+            // 3. Khởi tạo thực thể Task
             var task = new AppTask(
                     GuidGenerator.Create(),
                     input.ProjectId,
@@ -138,14 +143,19 @@ namespace TaskManagement.Tasks
 
             task.Description = input.Description;
             task.DueDate = input.DueDate;
+            
+            // Nếu người tạo là PM hoặc Admin thì Task được duyệt luôn
             task.IsApproved = isBoss || hasApprovePermission;
 
             var finalAssignedIds = new List<Guid>(input.AssignedUserIds);
 
+            // Nếu người tạo là nhân viên (không phải Boss/Admin)
             if (!isBoss && !hasApprovePermission)
             {
-                var currentUserId = CurrentUser.Id ?? Guid.Empty;
-                if (currentUserId != Guid.Empty && !finalAssignedIds.Contains(currentUserId))
+                var currentUserId = CurrentUser.GetId(); // Sử dụng GetId() từ ICurrentUser
+                
+                // BẮT BUỘC: Nếu trong danh sách gán chưa có tên mình, hệ thống tự động thêm vào
+                if (!finalAssignedIds.Contains(currentUserId))
                 {
                     finalAssignedIds.Add(currentUserId);
                 }
@@ -156,33 +166,45 @@ namespace TaskManagement.Tasks
                 task.AddAssignment(userId);
             }
 
+            // 5. Lưu Task vào Database
             await _taskRepository.InsertAsync(task);
             var resultDto = ObjectMapper.Map<AppTask, TaskDto>(task);
 
+            // 6. GỬI THÔNG BÁO REAL-TIME VÀ LƯU DATABASE
             if (!task.IsApproved)
             {
-                // Nếu là đề xuất, gửi cho PM (Project Manager) của dự án đó
+                // Trường hợp nhân viên ĐỀ XUẤT: Gửi thông báo cho Quản lý dự án (PM)
                 var project = await _projectRepository.GetAsync(task.ProjectId);
-                var notif = new AppNotification(GuidGenerator.Create(), project.ProjectManagerId, "Đề xuất mới", $"{CurrentUser.UserName} vừa đề xuất công việc: {task.Title}", "NewTaskProposed", task.Id);
+                var notif = new AppNotification(
+                    GuidGenerator.Create(), 
+                    project.ProjectManagerId, 
+                    "Đề xuất công việc", 
+                    $"{CurrentUser.UserName} vừa đề xuất công việc mới: {task.Title}", 
+                    "NewTaskProposed", 
+                    task.Id
+                );
                 
-                // Lưu vào Database
-                await _notificationRepository.InsertAsync(notif);
+                await _notificationRepository.InsertAsync(notif); // Lưu DB
 
-                // Chuyển sang DTO và Bắn SignalR
                 var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(notif);
                 await _hubContext.Clients.User(project.ProjectManagerId.ToString()).SendAsync("ReceiveNotification", notifDto);
             }
             else
             {
-                // Nếu PM tạo task đã duyệt, gửi cho tất cả những người được gán (trừ bản thân PM)
+                // Trường hợp PM/Admin PHÂN CÔNG: Gửi cho tất cả người được gán (trừ người tạo)
                 foreach (var userId in finalAssignedIds.Where(id => id != CurrentUser.Id))
                 {
-                    var notif = new AppNotification(GuidGenerator.Create(), userId, "Công việc mới", $"Bạn được gán công việc: {task.Title}", "TaskAssigned", task.Id);
+                    var notif = new AppNotification(
+                        GuidGenerator.Create(), 
+                        userId, 
+                        "Giao việc mới", 
+                        $"Bạn được phân công công việc: {task.Title}", 
+                        "TaskAssigned", 
+                        task.Id
+                    );
                     
-                    // Lưu vào Database
-                    await _notificationRepository.InsertAsync(notif);
+                    await _notificationRepository.InsertAsync(notif); // Lưu DB
 
-                    // Chuyển sang DTO và Bắn SignalR
                     var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(notif);
                     await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", notifDto);
                 }

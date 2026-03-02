@@ -116,7 +116,7 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.hasApprovePermission = this.permissionService.getGrantedPolicy('TaskManagement.Tasks.Approve');
 
     this.buildForm();
-    this.setupAssignmentGuard();
+    this.setupAssignmentGuard(); // Kích hoạt bộ canh gác phân công
     
     this.loadProjectInfo();
     this.loadUsers();
@@ -124,18 +124,14 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.loadOverdueTasks();
     this.loadPendingTasks();
 
-    // LOGIC ĐỒNG BỘ REALTIME: Lắng nghe tín hiệu làm mới dữ liệu từ SignalR
+    // LOGIC ĐỒNG BỘ REALTIME
     this.setupRealtimeSync();
   }
 
-  // Lắng nghe sự kiện để tự động load lại dữ liệu
   private setupRealtimeSync(): void {
-    // Chúng ta lắng nghe mọi thông báo. Nếu có thông báo liên quan đến Task, ta refresh lại bảng.
-    // Lưu ý: Bạn cần đảm bảo NotificationService có cơ chế emit/Subject để báo hiệu ở đây.
-    // Ở mức đơn giản nhất, ta dùng hubConnection trực tiếp nếu NotificationService public nó.
-    this.notificationService.onNotificationReceived$.subscribe(notif => {
+    this.signalrSubscription = this.notificationService.onNotificationReceived$.subscribe(notif => {
       console.log('Realtime Update Triggered:', notif);
-      this.refreshData(); // Tự động cập nhật stats và list mà không cần F5
+      this.refreshData(); 
     });
   }
 
@@ -145,10 +141,23 @@ export class TaskComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Logic CHỐNG ĐÙN ĐẨY: 
+   * Nếu là nhân viên thường, không được phép gỡ tên mình khỏi danh sách thực hiện.
+   */
   private setupAssignmentGuard(): void {
     this.form.get('assignedUserIds')?.valueChanges.subscribe((ids: string[]) => {
-      if (this.currentUser?.id && ids && !ids.includes(this.currentUser.id)) {
-        this.form.get('assignedUserIds')?.setValue([this.currentUser.id, ...ids], { emitEvent: false });
+      const currentUserId = this.currentUser?.id;
+
+      // Chỉ áp dụng ràng buộc nếu user KHÔNG có quyền Duyệt (không phải Admin/PM)
+      if (!this.hasApprovePermission && currentUserId) {
+        if (!ids || !ids.includes(currentUserId)) {
+          // Nếu lỡ tay xóa tên mình, tự động thêm lại ngay lập tức
+          const updatedIds = ids ? [currentUserId, ...ids] : [currentUserId];
+          this.form.get('assignedUserIds')?.setValue(updatedIds, { emitEvent: false });
+          
+          this.message.warning('Bạn phải tham gia thực hiện công việc do chính mình tạo ra!');
+        }
       }
     });
   }
@@ -243,6 +252,8 @@ export class TaskComponent implements OnInit, OnDestroy {
     this.duplicateErrorMessage = false;
     this.isEditMode = false;
     this.selectedTaskId = null;
+    
+    // Tự động gán sẵn tên người tạo vào danh sách khi mở form
     this.form.reset({ 
       status: TaskStatus.New, 
       weight: 1, 
@@ -250,6 +261,7 @@ export class TaskComponent implements OnInit, OnDestroy {
       isApproved: this.hasApprovePermission, 
       assignedUserIds: [this.currentUser.id] 
     });
+    
     this.form.enable(); 
     this.isModalOpen = true;
   }

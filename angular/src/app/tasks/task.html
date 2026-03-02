@@ -147,7 +147,7 @@
 
       <nz-form-item class="mb-2">
         <nz-form-label nzRequired [nzTooltipTitle]="'TaskManagement::WeightTooltip' | abpLocalization">
-          {{ 'TaskManagement::TaskWeight' | abpLocalization }}: <span class="text-primary fw-bold ms-2">{{ form.get('weight')?.value }}</span>
+          {{ 'TaskManagement::Task Weight' | abpLocalization }}: <span class="text-primary fw-bold ms-2">{{ form.get('weight')?.value }}</span>
         </nz-form-label>
         <nz-form-control>
           <nz-slider formControlName="weight" [nzMin]="1" [nzMax]="10" [nzStep]="1" [nzMarks]="weightMarks"></nz-slider>

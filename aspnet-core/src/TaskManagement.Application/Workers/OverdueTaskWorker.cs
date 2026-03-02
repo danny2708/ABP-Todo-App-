@@ -22,7 +22,7 @@ namespace TaskManagement.Workers
         public OverdueTaskWorker(AbpAsyncTimer timer, IServiceScopeFactory serviceScopeFactory) 
             : base(timer, serviceScopeFactory)
         {
-            // Thiết lập 10 giây quét 1 lần để test
+            // Thiết lập 100 giây quét 1 lần để test
             Timer.Period = 100000; 
         }
 
