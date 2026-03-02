@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using TaskManagement.Hubs;
 using TaskManagement.Notifications;
 using TaskManagement.Tasks;
@@ -10,40 +11,55 @@ using Volo.Abp.BackgroundWorkers;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.ObjectMapping;
 using Volo.Abp.Threading;
-using Volo.Abp.Uow; // THÊM NAMESPACE NÀY
+using Volo.Abp.Uow;
+using Volo.Abp.Timing;
+using Volo.Abp.Linq; // Cần thiết để dùng IAsyncQueryableExecuter
 
 namespace TaskManagement.Workers
 {
     public class OverdueTaskWorker : AsyncPeriodicBackgroundWorkerBase
     {
-        public OverdueTaskWorker(
-            AbpAsyncTimer timer,
-            IServiceScopeFactory serviceScopeFactory
-        ) : base(timer, serviceScopeFactory)
+        public OverdueTaskWorker(AbpAsyncTimer timer, IServiceScopeFactory serviceScopeFactory) 
+            : base(timer, serviceScopeFactory)
         {
-            Timer.Period = 1000; // 10 phút quét 1 lần
+            // Thiết lập 10 giây quét 1 lần để test
+            Timer.Period = 100000; 
         }
 
-        // THÊM ATTRIBUTE NÀY ĐỂ GIỮ KẾT NỐI DATABASE LUÔN MỞ
         [UnitOfWork]
         protected override async Task DoWorkAsync(PeriodicBackgroundWorkerContext workerContext)
         {
+            var logger = workerContext.ServiceProvider.GetRequiredService<ILogger<OverdueTaskWorker>>();
             var taskRepository = workerContext.ServiceProvider.GetRequiredService<ITaskRepository>();
             var notificationRepository = workerContext.ServiceProvider.GetRequiredService<IRepository<AppNotification, Guid>>();
             var hubContext = workerContext.ServiceProvider.GetRequiredService<IHubContext<NotificationHub>>();
             var objectMapper = workerContext.ServiceProvider.GetRequiredService<IObjectMapper>();
+            var clock = workerContext.ServiceProvider.GetRequiredService<IClock>();
+            
+            // GIẢI PHÁP: Lấy AsyncExecuter từ ServiceProvider
+            var asyncExecuter = workerContext.ServiceProvider.GetRequiredService<IAsyncQueryableExecuter>();
 
-            // 1. Tìm các Task đã quá hạn và chưa hoàn thành
-            // Sử dụng đường dẫn tuyệt đối cho TaskStatus để tránh xung đột namespace
-            var overdueTasks = await taskRepository.GetListAsync(t => 
-                t.DueDate < DateTime.Now && 
-                t.Status != TaskManagement.Tasks.TaskStatus.Completed && 
-                t.IsApproved == true
+            logger.LogInformation("--- Đang kiểm tra task quá hạn: " + clock.Now + " ---");
+
+            // Nạp dữ liệu kèm Assignments để tránh lỗi null
+            var queryable = await taskRepository.WithDetailsAsync(t => t.Assignments);
+            
+            // Sửa lỗi: Sử dụng asyncExecuter đã resolve ở trên
+            var overdueTasks = await asyncExecuter.ToListAsync(
+                queryable.Where(t => 
+                    t.DueDate < clock.Now && 
+                    t.Status != TaskManagement.Tasks.TaskStatus.Completed && 
+                    t.IsApproved == true
+                )
             );
+
+            if (overdueTasks.Any())
+            {
+                logger.LogInformation($"Tìm thấy {overdueTasks.Count} công việc quá hạn!");
+            }
 
             foreach (var task in overdueTasks)
             {
-                // 2. Kiểm tra tránh gửi trùng thông báo
                 var alreadyNotified = await notificationRepository.AnyAsync(n => 
                     n.RelatedTaskId == task.Id && 
                     n.Type == "TaskOverdue"
@@ -51,7 +67,6 @@ namespace TaskManagement.Workers
 
                 if (!alreadyNotified)
                 {
-                    // 3. Gửi thông báo cho từng nhân viên được gán
                     foreach (var assignment in task.Assignments)
                     {
                         var notification = new AppNotification(
@@ -64,12 +79,13 @@ namespace TaskManagement.Workers
                         );
 
                         await notificationRepository.InsertAsync(notification);
-
+                        
                         var notificationDto = objectMapper.Map<AppNotification, NotificationDto>(notification);
-
-                        // Gửi realtime qua SignalR
+                        
                         await hubContext.Clients.User(assignment.UserId.ToString())
                             .SendAsync("ReceiveNotification", notificationDto);
+                            
+                        logger.LogInformation($"Gửi cảnh báo tới User ID: {assignment.UserId}");
                     }
                 }
             }
