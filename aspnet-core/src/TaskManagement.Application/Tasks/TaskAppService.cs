@@ -321,7 +321,7 @@ namespace TaskManagement.Tasks
         public async Task DeleteAsync(Guid id, string reason)
         {
             var task = await _taskRepository.GetAsync(id);
-            if (string.IsNullOrWhiteSpace(reason)) throw new UserFriendlyException(L["TaskManagement::DeletionReasonRequired"]);
+            if (string.IsNullOrWhiteSpace(reason)) throw new UserFriendlyException(L["TaskManagement::DeletionReason Required"]);
 
             bool isBoss = await IsBossOfProject(task.ProjectId);
 

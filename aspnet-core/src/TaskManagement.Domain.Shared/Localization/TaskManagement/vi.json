@@ -28,7 +28,7 @@
     "Search task": "Tìm kiếm công việc",
     "Project Progress": "Tiến độ dự án",
     "Notifications": "Thông báo",
-    
+    "ReasonRequired": "Lý do xóa công việc không được để trống",
     "Permission:Tasks": "Quản lý công việc",
     "Permission:Tasks.Create": "Tạo mới công việc",
     "Permission:Tasks.Update": "Cập nhật công việc",
@@ -86,6 +86,12 @@
     "IN PROGRESS": "ĐANG XỬ LÝ",
     "COMPLETED": "ĐÃ HOÀN THÀNH",
     "OVERDUE TASKS": "CÔNG VIỆC QUÁ HẠN",
+    "All": "Tất cả",
+    "Unread": "Chưa đọc",
+    "Read": "Đã đọc",
+    "Mark All As Read": "Đánh dấu đã đọc",
+    "No Unread Notifications": "Không có thông báo chưa đọc",
+    "No Notifications": "Không có thông báo nào",
 
     "SaveSuccess": "Lưu dữ liệu thành công!",
     "DeletedSuccess": "Đã xóa thành công!",

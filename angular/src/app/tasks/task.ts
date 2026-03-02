@@ -330,7 +330,7 @@ export class TaskComponent implements OnInit, OnDestroy {
   }
 
   deleteTaskWithReason(): void {
-    if (!this.deletionReason.trim()) { this.message.warning(this.l('::ReasonRequired')); return; }
+    if (!this.deletionReason.trim()) { this.message.warning(this.l('::Reason Required')); return; }
     this.taskService.delete(this.selectedTaskId!, this.deletionReason).subscribe(() => {
         this.message.success(this.l('::DeletedSuccess'));
         this.isReasonModalOpen = false;

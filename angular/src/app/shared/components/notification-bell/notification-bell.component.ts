@@ -23,20 +23,27 @@ import { CoreModule } from '@abp/ng.core';
       <div class="notification-dropdown shadow-lg rounded bg-white">
         <div class="p-3 border-bottom d-flex justify-content-between align-items-center">
           <h6 class="mb-0 fw-bold">{{ 'TaskManagement::Notifications' | abpLocalization }}</h6>
+          
           <button *ngIf="service.unreadCount > 0" 
                   nz-button nzType="link" nzSize="small" 
                   class="p-0 text-primary d-flex align-items-center"
                   (click)="service.markAllAsRead()">
-            <i nz-icon nzType="check" class="me-1"></i> Đánh dấu đã đọc
+            <i nz-icon nzType="check" class="me-1"></i> 
+            {{ 'TaskManagement::Mark All As Read' | abpLocalization }}
           </button>
         </div>
 
         <div class="d-flex p-2 border-bottom gap-1">
-          <button class="filter-btn" [class.active]="filter === 'all'" (click)="setFilter('all')">Tất cả</button>
-          <button class="filter-btn" [class.active]="filter === 'unread'" (click)="setFilter('unread')">
-            Chưa đọc <span *ngIf="service.unreadCount > 0" class="badge bg-danger ms-1">{{ service.unreadCount }}</span>
+          <button class="filter-btn" [class.active]="filter === 'all'" (click)="setFilter('all')">
+            {{ 'TaskManagement::All' | abpLocalization }}
           </button>
-          <button class="filter-btn" [class.active]="filter === 'read'" (click)="setFilter('read')">Đã đọc</button>
+          <button class="filter-btn" [class.active]="filter === 'unread'" (click)="setFilter('unread')">
+            {{ 'TaskManagement::Unread' | abpLocalization }}
+            <span *ngIf="service.unreadCount > 0" class="badge bg-danger ms-1">{{ service.unreadCount }}</span>
+          </button>
+          <button class="filter-btn" [class.active]="filter === 'read'" (click)="setFilter('read')">
+            {{ 'TaskManagement::Read' | abpLocalization }}
+          </button>
         </div>
         
         <div class="notification-list">
@@ -65,8 +72,9 @@ import { CoreModule } from '@abp/ng.core';
           <div *ngIf="filteredNotifications.length === 0" class="p-4 text-center text-muted">
             <i nz-icon nzType="bell" class="fs-1 opacity-50 mb-2"></i>
             <p class="small mb-0">
-              {{ filter === 'unread' ? 'Không có thông báo chưa đọc' : 
-                 filter === 'read' ? 'Không có thông báo đã đọc' : 'Bạn chưa có thông báo nào' }}
+              {{ filter === 'unread' ? ('TaskManagement::No Unread Notifications' | abpLocalization) : 
+                 filter === 'read' ? ('TaskManagement::No Read Notifications' | abpLocalization) : 
+                 ('TaskManagement::No Notifications' | abpLocalization) }}
             </p>
           </div>
         </div>
@@ -76,14 +84,15 @@ import { CoreModule } from '@abp/ng.core';
   styles: [`
     .bell-wrapper { cursor: pointer; padding: 0 15px; display: flex; align-items: center; height: 100%; transition: opacity 0.3s; }
     .bell-wrapper:hover { opacity: 0.7; }
-    .bell-icon { font-size: 20px; color: #fff; }
+    
+    /* MÀU XANH ĐẬM ĐỂ NỔI BẬT HƠN */
+    .bell-icon { font-size: 20px; color: #001529; } 
     
     .notification-dropdown { width: 360px; overflow: hidden; border: 1px solid #f0f0f0; }
     .notification-list { max-height: 400px; overflow-y: auto; }
     .notification-list::-webkit-scrollbar { width: 5px; }
     .notification-list::-webkit-scrollbar-thumb { background: #d9d9d9; border-radius: 4px; }
 
-    /* Nút bộ lọc */
     .filter-btn {
       flex: 1; border: none; background: transparent; padding: 6px 12px;
       font-size: 13px; font-weight: 500; border-radius: 6px; color: #595959;
@@ -92,13 +101,9 @@ import { CoreModule } from '@abp/ng.core';
     .filter-btn:hover { background: #e6f7ff; color: #1890ff; }
     .filter-btn.active { background: #1890ff; color: #fff; box-shadow: 0 2px 4px rgba(24,144,255,0.2); }
 
-    /* Item thông báo */
-    .notification-item {
-      padding: 14px 16px; transition: background-color 0.2s; cursor: pointer;
-    }
+    .notification-item { padding: 14px 16px; transition: background-color 0.2s; cursor: pointer; }
     .notification-item:hover { background-color: #f5f5f5; }
     
-    /* Giao diện CHƯA ĐỌC */
     .unread-bg { background-color: #f0f8ff !important; }
     .unread-bg:hover { background-color: #e6f7ff !important; }
     .unread-dot { width: 10px; height: 10px; background-color: #1890ff; border-radius: 50%; margin-top: 5px; }
@@ -117,12 +122,9 @@ export class NotificationBellComponent implements OnInit {
   public filter: 'all' | 'unread' | 'read' = 'all';
 
   ngOnInit(): void {
-    // Đảm bảo kết nối SignalR được khởi động
     this.service.startConnection();
-
-    // Lắng nghe tín hiệu để ép giao diện cập nhật ngay lập tức
     this.service.onNotificationReceived$.subscribe(() => {
-      this.cdr.detectChanges(); // Ép nhảy số quả chuông ngay khi nhận tin
+      this.cdr.detectChanges();
     });
   }
 
@@ -144,6 +146,8 @@ export class NotificationBellComponent implements OnInit {
       case 'NewTaskProposed': return 'plus-circle';
       case 'TaskRejected': return 'close-circle';
       case 'TaskOverdue': return 'warning';
+      case 'ProjectAssigned': return 'project';
+      case 'ProjectRemoved': return 'user-delete';
       default: return 'info-circle';
     }
   }
@@ -154,6 +158,7 @@ export class NotificationBellComponent implements OnInit {
       case 'NewTaskProposed': return '#1890ff'; 
       case 'TaskRejected': return '#ff4d4f'; 
       case 'TaskOverdue': return '#faad14'; 
+      case 'ProjectAssigned': return '#722ed1'; // Tím cho dự án
       default: return '#1890ff';
     }
   }
