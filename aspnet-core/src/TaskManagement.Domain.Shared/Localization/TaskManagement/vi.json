@@ -25,6 +25,8 @@
     "Permission:Projects.Delete": "Xóa dự án",
     "TaskManagement::Task Already Exists With Same Details": "Đã tồn tại công việc tương tự trong dự án",
     "Task Already Exists": "Đã tồn tại công việc tương tự trong dự án",
+    "Search task": "Tìm kiếm công việc",
+    "Project Progress": "Tiến độ dự án",
     
     "Permission:Tasks": "Quản lý công việc",
     "Permission:Tasks.Create": "Tạo mới công việc",

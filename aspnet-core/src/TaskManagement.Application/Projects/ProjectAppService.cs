@@ -1,4 +1,3 @@
-// aspnet-core\src\TaskManagement.Application\Projects\ProjectAppService.cs
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -50,7 +49,6 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         
         var dto = ObjectMapper.Map<Project, ProjectDto>(project);
         
-        // SỬ DỤNG HÀM TÍNH TOÁN RIÊNG
         await CalculateProjectStatsAsync(dto);
 
         var manager = await _userRepository.FindAsync(project.ProjectManagerId);
@@ -65,11 +63,9 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         var currentUserId = CurrentUser.Id;
         var queryable = await _projectRepository.WithDetailsAsync(p => p.Members);
 
-        // 1. Áp dụng bộ lọc tìm kiếm
         queryable = queryable.WhereIf(!string.IsNullOrWhiteSpace(input.FilterText), 
             x => x.Name.Contains(input.FilterText) || (x.Description != null && x.Description.Contains(input.FilterText)));
 
-        // 2. Phân quyền truy cập
         bool isAdmin = await AuthorizationService.IsGrantedAsync(TaskManagementPermissions.Projects.Create);
         if (!isAdmin)
         {
@@ -88,12 +84,9 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         foreach (var dto in projectDtos)
         {
             var projectEntity = projects.First(p => p.Id == dto.Id);
-            
-            // Gán thông tin thành viên
             dto.MemberIds = projectEntity.Members.Select(m => m.UserId).ToList();
             dto.MemberCount = dto.MemberIds.Count;
 
-            // SỬ DỤNG HÀM TÍNH TOÁN RIÊNG THEO TRỌNG SỐ
             await CalculateProjectStatsAsync(dto);
             
             var manager = await _userRepository.FindAsync(dto.ProjectManagerId);
@@ -103,9 +96,6 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         return new PagedResultDto<ProjectDto>(totalCount, projectDtos);
     }
 
-    /// <summary>
-    /// Hàm riêng biệt để tính toán tiến độ dựa trên TRỌNG SỐ (Weight)
-    /// </summary>
     private async Task CalculateProjectStatsAsync(ProjectDto dto)
     {
         var tasks = await _taskRepository.GetListAsync(t => t.ProjectId == dto.Id && t.IsApproved);
@@ -115,15 +105,11 @@ public class ProjectAppService : ApplicationService, IProjectAppService
 
         if (dto.TaskCount > 0)
         {
-            // Tổng trọng số của tất cả các task
             int totalWeight = tasks.Sum(t => t.Weight);
-            
-            // Tổng trọng số của các task đã xong
             int completedWeight = tasks
                 .Where(t => t.Status == Tasks.TaskStatus.Completed)
                 .Sum(t => t.Weight);
 
-            // Tiến độ (%) = (Trọng số đã xong / Tổng trọng số) * 100
             dto.Progress = totalWeight > 0 
                 ? (float)Math.Round((double)completedWeight / totalWeight * 100, 2) 
                 : 0;
@@ -165,14 +151,46 @@ public class ProjectAppService : ApplicationService, IProjectAppService
         if (!isAdmin && project.ProjectManagerId != CurrentUser.Id)
             throw new UserFriendlyException(L["TaskManagement::NoPermissionToEditProject"]);
 
+        // Lấy danh sách ID thành viên cũ trước khi cập nhật
+        var oldMemberIds = project.Members.Select(m => m.UserId).ToList();
+
         project.Name = input.Name;
         project.Description = input.Description;
         project.ProjectManagerId = input.ProjectManagerId;
 
+        // Cập nhật danh sách thành viên mới
         project.Members.Clear();
         foreach (var userId in input.MemberIds)
         {
             project.Members.Add(new ProjectMember { ProjectId = project.Id, UserId = userId });
+        }
+
+        // Xử lý xóa nhân viên khỏi các Task nếu họ bị gỡ khỏi dự án
+        var removedMemberIds = oldMemberIds.Except(input.MemberIds).ToList();
+        
+        if (removedMemberIds.Any())
+        {
+            // Lấy tất cả Task của dự án này kèm theo Assignments
+            var tasks = await _taskRepository.WithDetailsAsync(t => t.Assignments);
+            var projectTasks = await AsyncExecuter.ToListAsync(tasks.Where(t => t.ProjectId == id));
+
+            foreach (var task in projectTasks)
+            {
+                bool isTaskUpdated = false;
+                foreach (var removedId in removedMemberIds)
+                {
+                    if (task.Assignments.Any(a => a.UserId == removedId))
+                    {
+                        task.RemoveAssignment(removedId);
+                        isTaskUpdated = true;
+                    }
+                }
+
+                if (isTaskUpdated)
+                {
+                    await _taskRepository.UpdateAsync(task);
+                }
+            }
         }
 
         await _projectRepository.UpdateAsync(project, autoSave: true);

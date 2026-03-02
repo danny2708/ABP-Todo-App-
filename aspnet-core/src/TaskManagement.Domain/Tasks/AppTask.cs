@@ -1,7 +1,7 @@
-// aspnet-core\src\TaskManagement.Domain\Tasks\AppTask.cs
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq; 
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace TaskManagement.Tasks
@@ -17,10 +17,9 @@ namespace TaskManagement.Tasks
         public bool IsRejected { get; set; }
         public string? DeletionReason { get; set; }
         
-        // Trọng số công việc 
         public int Weight { get; set; }
 
-        public ICollection<TaskAssignment> Assignments { get; set; }
+        public virtual ICollection<TaskAssignment> Assignments { get; set; } 
 
         protected AppTask() 
         {
@@ -40,7 +39,21 @@ namespace TaskManagement.Tasks
 
         public void AddAssignment(Guid userId)
         {
+            // Kiểm tra tránh thêm trùng lặp cùng một user vào một task
+            if (Assignments.Any(a => a.UserId == userId))
+            {
+                return;
+            }
             Assignments.Add(new TaskAssignment(Id, userId));
+        }
+
+        public void RemoveAssignment(Guid userId)
+        {
+            var assignment = Assignments.FirstOrDefault(a => a.UserId == userId);
+            if (assignment != null)
+            {
+                Assignments.Remove(assignment);
+            }
         }
 
         public void ClearAssignments()
@@ -53,6 +66,8 @@ namespace TaskManagement.Tasks
     {
         public Guid TaskId { get; set; }
         public Guid UserId { get; set; }
+        
+        protected TaskAssignment() { }
 
         public TaskAssignment(Guid taskId, Guid userId)
         {

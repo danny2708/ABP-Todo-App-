@@ -9,7 +9,7 @@ namespace TaskManagement.Projects
     public class Project : FullAuditedAggregateRoot<Guid>
     {
         public string Name { get; set; } = default!;
-        public string Description { get; set; }
+        public string? Description { get; set; }
         
         // Quản lý dự án (Bắt buộc)
         public Guid ProjectManagerId { get; set; }

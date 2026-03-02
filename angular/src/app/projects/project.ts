@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, OnDestroy } from '@angular/core';
+import { Component, OnInit, inject, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ListService, PagedResultDto, CoreModule, PermissionService, LocalizationService, ConfigStateService, CurrentUserDto } from '@abp/ng.core';
@@ -22,6 +22,7 @@ import { NzSpinModule } from 'ng-zorro-antd/spin';
 import { ProjectService } from '../proxy/projects/project.service';
 import { ProjectDto } from '../proxy/projects/models';
 import { TaskService } from '../proxy/tasks/task.service';
+import { NotificationService } from '../shared/services/notification.service'; // Tích hợp Real-time
 
 @Component({
   selector: 'app-project',
@@ -45,6 +46,11 @@ export class ProjectComponent implements OnInit, OnDestroy {
   public permission = inject(PermissionService); 
   private localizationService = inject(LocalizationService);
   private configState = inject(ConfigStateService);
+  private cdr = inject(ChangeDetectorRef);
+  
+  // Real-time Sync
+  private notificationService = inject(NotificationService);
+  private signalrSubscription?: Subscription;
 
   projectData: PagedResultDto<ProjectDto> = { items: [], totalCount: 0 };
   users: any[] = []; 
@@ -68,17 +74,26 @@ export class ProjectComponent implements OnInit, OnDestroy {
     this.loadProjectManagers(); 
     this.loadProjects();
     this.subscribeToPmChanges();
+    this.setupRealtimeSync(); // Đăng ký lắng nghe SignalR
   }
 
   ngOnDestroy(): void {
     this.pmSubscription?.unsubscribe();
+    this.signalrSubscription?.unsubscribe();
+  }
+
+  private setupRealtimeSync(): void {
+    this.signalrSubscription = this.notificationService.onNotificationReceived$.subscribe(() => {
+      this.list.get();
+      this.cdr.detectChanges();
+    });
   }
 
   canEditProject(project: ProjectDto): boolean {
-      const hasGlobalEditPermission = this.permission.getGrantedPolicy('TaskManagement.Projects.Update');
-      const isProjectManager = project.projectManagerId === this.currentUser.id;
-      return hasGlobalEditPermission || isProjectManager;
-    }
+    const hasGlobalEditPermission = this.permission.getGrantedPolicy('TaskManagement.Projects.Update');
+    const isProjectManager = project.projectManagerId === this.currentUser.id;
+    return hasGlobalEditPermission || isProjectManager;
+  }
 
   private subscribeToPmChanges(): void {
     this.pmSubscription = this.form.get('projectManagerId')?.valueChanges.subscribe(pmId => {
@@ -99,6 +114,7 @@ export class ProjectComponent implements OnInit, OnDestroy {
     this.list.hookToQuery(streamCreator).subscribe(res => {
       this.projectData = res;
       this.loading = false;
+      this.cdr.detectChanges();
     });
   }
 
@@ -137,22 +153,31 @@ export class ProjectComponent implements OnInit, OnDestroy {
   }
 
   editProject(event: Event, project: ProjectDto): void {
-      event.stopPropagation();
-      
-      if (!this.canEditProject(project)) {
-        this.message.error(this.l('::NoPermissionToEditProject'));
-        return;
-      }
-  
-      this.isEditMode = true;
-      this.projectService.get(project.id).subscribe(res => {
-        this.form.patchValue({ ...res, memberIds: res.memberIds || [] });
-        this.isModalOpen = true;
-      });
+    event.stopPropagation();
+    
+    if (!this.canEditProject(project)) {
+      this.message.error(this.l('::NoPermissionToEditProject'));
+      return;
     }
 
+    this.isEditMode = true;
+    this.projectService.get(project.id).subscribe(res => {
+      this.form.patchValue({ ...res, memberIds: res.memberIds || [] });
+      this.isModalOpen = true;
+    });
+  }
+
   save(): void {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      Object.values(this.form.controls).forEach(control => {
+        if (control.invalid) {
+          control.markAsDirty();
+          control.updateValueAndValidity({ onlySelf: true });
+        }
+      });
+      return;
+    }
+
     this.saving = true;
     const formData = this.form.getRawValue();
 
@@ -160,11 +185,17 @@ export class ProjectComponent implements OnInit, OnDestroy {
       ? this.projectService.update(formData.id, formData)
       : this.projectService.create(formData);
 
-    request.subscribe(() => {
-      this.message.success(this.l('::SaveSuccess'));
-      this.isModalOpen = false;
-      this.saving = false;
-      this.list.get();
+    request.subscribe({
+      next: () => {
+        this.message.success(this.l('::SaveSuccess'));
+        this.isModalOpen = false;
+        this.saving = false;
+        this.list.get(); // Refresh danh sách sau khi lưu
+      },
+      error: (err) => {
+        this.saving = false;
+        this.message.error(err?.error?.error?.message || 'Có lỗi xảy ra khi lưu dự án');
+      }
     });
   }
 

@@ -20,7 +20,7 @@
     <div class="row align-items-center">
       <div class="col-md-5 mb-3 mb-md-0">
         <nz-input-group [nzPrefix]="searchIcon" class="rounded">
-          <input type="text" nz-input [placeholder]="'TaskManagement::SearchPlaceholder' | abpLocalization" [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()" />
+          <input type="text" nz-input [placeholder]="'TaskManagement::Search task' | abpLocalization" [(ngModel)]="searchTerm" (ngModelChange)="applyFilter()" />
         </nz-input-group>
         <ng-template #searchIcon><i nz-icon nzType="search" class="text-muted"></i></ng-template>
       </div>
