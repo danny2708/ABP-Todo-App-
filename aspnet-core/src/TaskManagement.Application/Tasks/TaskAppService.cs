@@ -98,7 +98,7 @@ namespace TaskManagement.Tasks
                 var userNames = (await _userRepository.GetListAsync(u => assignedIds.Contains(u.Id))).Select(u => u.UserName);
                 
                 dto.AssignedUserIds = assignedIds;
-                dto.AssignedUserName = userNames.Any() ? string.Join(", ", userNames) : L["Unassigned"];
+                dto.AssignedUserName = userNames.Any() ? string.Join(", ", userNames) : null;
             }
 
             return new PagedResultDto<TaskDto>(totalCount, taskDtos);
@@ -262,6 +262,7 @@ namespace TaskManagement.Tasks
 
         public async Task<TaskDto> UpdateAsync(Guid id, CreateUpdateTaskDto input)
         {
+            // 1. Lấy Task hiện tại kèm danh sách Assignments cũ
             var queryable = await _taskRepository.WithDetailsAsync(t => t.Assignments);
             var task = await queryable.FirstOrDefaultAsync(t => t.Id == id);
             
@@ -276,30 +277,12 @@ namespace TaskManagement.Tasks
                 t.Description == input.Description
             );
 
-            if (isDuplicate)
-            {
-                throw new UserFriendlyException(L["TaskManagement::Task Already Exists"]);
-            }
+            if (isDuplicate) throw new UserFriendlyException(L["TaskManagement::Task Already Exists"]);
 
             bool isBoss = await IsBossOfProject(task.ProjectId);
-            bool isAssignedToMe = task.Assignments.Any(a => a.UserId == CurrentUser.Id);
-            bool isCreator = task.CreatorId == CurrentUser.Id;
-            
-            if (!isBoss)
-            {
-                if (task.IsApproved)
-                {
-                    if (!isAssignedToMe) throw new UserFriendlyException(L["TaskManagement::No Permission"]);
-                    if (input.Title != task.Title || input.Description != task.Description) 
-                        throw new UserFriendlyException(L["TaskManagement::Cannot Edit Content After Approval"]);
-                }
-                else
-                {
-                    if (!isCreator) throw new UserFriendlyException(L["TaskManagement::No Permission"]);
-                    if (input.Status != task.Status) 
-                        throw new UserFriendlyException(L["TaskManagement::Cannot Change Status Before Approval"]);
-                }
-            }
+
+            // LƯU LẠI DANH SÁCH ID CŨ TRƯỚC KHI UPDATE
+            var oldAssignedIds = task.Assignments.Select(a => a.UserId).ToList();
 
             task.Title = input.Title;
             task.Description = input.Description;
@@ -309,19 +292,53 @@ namespace TaskManagement.Tasks
             
             if (isBoss)
             {
+                // Cập nhật danh sách Assignment mới
                 task.ClearAssignments();
                 foreach (var userId in input.AssignedUserIds) task.AddAssignment(userId);
             }
 
             await _taskRepository.UpdateAsync(task);
+
+            // 2. LOGIC THÔNG BÁO CHO NGƯỜI MỚI ĐƯỢC GÁN
+            if (isBoss)
+            {
+                // Tìm ra những ID có trong danh sách mới nhưng chưa có trong danh sách cũ
+                var addedUserIds = input.AssignedUserIds.Except(oldAssignedIds).ToList();
+
+                foreach (var userId in addedUserIds)
+                {
+                    // Không gửi thông báo cho chính mình nếu mình tự gán task cho mình
+                    if (userId == CurrentUser.Id) continue;
+
+                    var notif = new AppNotification(
+                        GuidGenerator.Create(), 
+                        userId, 
+                        "Giao việc bổ sung", 
+                        $"Bạn vừa được gán vào công việc: {task.Title}", 
+                        "TaskAssigned", 
+                        task.Id
+                    );
+
+                    // Lưu vào Database để xem lại sau này
+                    await _notificationRepository.InsertAsync(notif);
+
+                    // Bắn SignalR để hiện Toast tức thì
+                    var notifDto = ObjectMapper.Map<AppNotification, NotificationDto>(notif);
+                    await _hubContext.Clients.User(userId.ToString()).SendAsync("ReceiveNotification", notifDto);
+                }
+            }
+
+            // 3. ĐỒNG BỘ NGẦM (SILENT SYNC)
+            // Giúp thanh tiến độ và các con số trên máy những người khác tự nhảy
             await SendSilentSyncSignalAsync(task.ProjectId);
+
             return ObjectMapper.Map<AppTask, TaskDto>(task);
         }
 
         public async Task DeleteAsync(Guid id, string reason)
         {
             var task = await _taskRepository.GetAsync(id);
-            if (string.IsNullOrWhiteSpace(reason)) throw new UserFriendlyException(L["TaskManagement::DeletionReason Required"]);
+            if (string.IsNullOrWhiteSpace(reason)) throw new UserFriendlyException(L["TaskManagement::Deletion Reason Required"]);
 
             bool isBoss = await IsBossOfProject(task.ProjectId);
 
@@ -375,7 +392,7 @@ namespace TaskManagement.Tasks
                 }
                 else
                 {
-                    dto.AssignedUserName = L["TaskManagement::Unassigned"];
+                    dto.AssignedUserName = null;
                 }
             }
             return new PagedResultDto<TaskDto>(dtos.Count, dtos);
